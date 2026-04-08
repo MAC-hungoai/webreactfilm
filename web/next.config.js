@@ -3,11 +3,13 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
     return [
-      // Proxy movie API calls to backend server
+      // Proxy movie API calls to backend server (only for development)
+      // Production uses direct NEXT_PUBLIC_API_URL
       {
         source: '/api/movies/:path*',
-        destination: 'http://localhost:5000/api/movies/:path*',
+        destination: `${apiUrl}/movies/:path*`,
       },
     ];
   },
