@@ -1,4 +1,4 @@
-import { prisma } from './prismadb';
+import { prisma } from '../libs/prismadb';
 
 const parseAdminEmails = (): string[] => {
   const raw = process.env.ADMIN_EMAILS || "";
