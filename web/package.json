@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:roles": "ts-node -P tsconfig.json src/seedUserRoles.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.6",

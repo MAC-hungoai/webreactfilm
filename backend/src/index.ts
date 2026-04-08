@@ -11,9 +11,17 @@ import userRoutes from './routes/users';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Middleware - CORS Configuration
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : [
+      'http://localhost:3000',
+      'http://localhost:3002',
+      'http://localhost:3001',
+    ];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3002'],
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json());

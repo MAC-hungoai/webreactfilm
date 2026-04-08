@@ -107,26 +107,26 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
     {
       key: 'dashboard',
       icon: <DashboardOutlined />,
-      label: 'Dashboard',
+      label: 'Bảng điều khiển',
       onClick: () => router.push('/'),
     },
     {
       key: 'movies-group',
       icon: <VideoCameraOutlined />,
-      label: 'Movies',
+      label: 'Phim',
       children: [
-        { key: 'movies-all', icon: <UnorderedListOutlined />, label: 'All movies', onClick: () => router.push('/movies') },
-        { key: 'movies-draft', icon: <FileTextOutlined />, label: 'Draft', onClick: () => router.push('/movies?status=draft') },
-        { key: 'movies-published', icon: <EyeOutlined />, label: 'Published', onClick: () => router.push('/movies?status=published') },
-        { key: 'movies-hidden', icon: <EyeInvisibleOutlined />, label: 'Hidden', onClick: () => router.push('/movies?status=hidden') },
+        { key: 'movies-all', icon: <UnorderedListOutlined />, label: 'Tất cả phim', onClick: () => router.push('/movies') },
+        { key: 'movies-draft', icon: <FileTextOutlined />, label: 'Nháp', onClick: () => router.push('/movies?status=draft') },
+        { key: 'movies-published', icon: <EyeOutlined />, label: 'Đã đăng', onClick: () => router.push('/movies?status=published') },
+        { key: 'movies-hidden', icon: <EyeInvisibleOutlined />, label: 'Đã ẩn', onClick: () => router.push('/movies?status=hidden') },
       ],
     },
-    { key: 'comments', icon: <CommentOutlined />, label: 'Comments', onClick: () => router.push('/comments') },
-    { key: 'analytics', icon: <BarChartOutlined />, label: 'Analytics', onClick: () => router.push('/analytics') },
-    { key: 'users', icon: <TeamOutlined />, label: 'Users', onClick: () => router.push('/users') },
+    { key: 'comments', icon: <CommentOutlined />, label: 'Bình luận', onClick: () => router.push('/comments') },
+    { key: 'analytics', icon: <BarChartOutlined />, label: 'Thống kê', onClick: () => router.push('/analytics') },
+    { key: 'users', icon: <TeamOutlined />, label: 'Người dùng', onClick: () => router.push('/users') },
     { type: 'divider' as const },
-    { key: 'categories', icon: <AppstoreOutlined />, label: 'Categories', onClick: () => router.push('/categories') },
-    { key: 'actors', icon: <UserOutlined />, label: 'Actors', onClick: () => router.push('/actors') },
+    { key: 'categories', icon: <AppstoreOutlined />, label: 'Thể loại', onClick: () => router.push('/categories') },
+    { key: 'actors', icon: <UserOutlined />, label: 'Diễn viên', onClick: () => router.push('/actors') },
   ];
 
   const userMenuItems = [
@@ -394,7 +394,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
             {collapsed ? 'N' : 'NEXTFLIX'}
           </Title>
           {!collapsed && (
-            <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>Admin Panel</div>
+            <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>Trang quản trị</div>
           )}
         </div>
         <Menu

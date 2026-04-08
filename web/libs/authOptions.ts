@@ -5,6 +5,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { compare } from 'bcrypt';
 import { prisma } from './prismadb';
+import { isAdminEmail } from './adminAuth';
 
 // Only include OAuth providers if credentials are configured
 const providers: AuthOptions['providers'] = [];
@@ -122,12 +123,29 @@ export const authOptions: AuthOptions = {
   session: { strategy: 'jwt' },
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
+    async signIn({ user, account }) {
+      // Update user role based on ADMIN_EMAILS if it's an OAuth login
+      if (user.email && account?.provider !== 'credentials') {
+        const shouldBeAdmin = isAdminEmail(user.email);
+        const currentRole = (user as any).role;
+        
+        // Only update if role needs to change
+        if (currentRole !== (shouldBeAdmin ? 'ADMIN' : 'USER')) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { role: shouldBeAdmin ? 'ADMIN' : 'USER' }
+          });
+        }
+      }
+      return true;
+    },
     async jwt({ token, user, account }) {
       // On initial sign-in (credentials or OAuth), persist user info into JWT
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
+        token.role = (user as any).role || 'USER';
       }
       return token;
     },
@@ -136,6 +154,7 @@ export const authOptions: AuthOptions = {
         (session.user as any).id = token.id;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
+        (session.user as any).role = token.role || 'USER';
       }
       return session;
     },

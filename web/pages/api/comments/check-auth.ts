@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import serverAuth from '../../../libs/serverAuth';
-import { isAdminEmail } from '../../../libs/adminAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -17,13 +16,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { currentUser } = authResult;
-    const isAdmin = isAdminEmail(currentUser.email);
+    const userRole = (currentUser as any).role || 'USER';
+    const isAdmin = userRole === 'ADMIN';
 
     return res.status(200).json({
       isAuthenticated: true,
       userId: currentUser.id,
       userName: currentUser.name,
       userEmail: currentUser.email,
+      userRole,
       isAdmin
     });
   } catch (error: any) {

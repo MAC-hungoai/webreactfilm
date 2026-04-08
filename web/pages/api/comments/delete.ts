@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../libs/prismadb';
 import serverAuth from '../../../libs/serverAuth';
-import { isAdminEmail } from '../../../libs/adminAuth';
 
 // Type assertion to handle Prisma client
 const getPrisma = () => {
@@ -42,9 +41,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'Bình luận không tìm thấy' });
     }
 
-    // Check permissions: owner or admin can delete
+    // Check permissions: owner or admin (by role) can delete
     const isOwner = comment.userId === currentUser.id;
-    const isAdmin = isAdminEmail(currentUser.email);
+    const isAdmin = (currentUser as any).role === 'ADMIN';
 
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ error: 'Bạn không có quyền xóa bình luận này' });

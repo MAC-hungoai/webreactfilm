@@ -10,6 +10,7 @@ import {
   FireOutlined,
 } from '@ant-design/icons';
 import AdminLayout from '../components/AdminLayout';
+import { ClientOnly } from '../hooks/useHydration';
 import api from '../lib/api';
 
 const { Text } = Typography;
@@ -290,62 +291,64 @@ const AnalyticsPage: React.FC = () => {
           Thống kê & Báo cáo
         </h1>
 
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={12} lg={8}>
-            <Card hoverable>
-              <Statistic
-                title="Tổng số phim"
-                value={stats.totalMovies}
-                prefix={<VideoCameraOutlined style={{ color: '#e50914' }} />}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={8}>
-            <Card hoverable>
-              <Statistic
-                title="Người dùng"
-                value={stats.totalUsers}
-                prefix={<UserOutlined style={{ color: '#1677ff' }} />}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={8}>
-            <Card hoverable>
-              <Statistic
-                title="Bình luận"
-                value={stats.totalComments}
-                prefix={<CommentOutlined style={{ color: '#52c41a' }} />}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={8}>
-            <Card hoverable>
-              <Statistic
-                title="Lượt xem"
-                value={stats.totalViews}
-                prefix={<EyeOutlined style={{ color: '#722ed1' }} />}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={8}>
-            <Card hoverable>
-              <Statistic
-                title="Lượt tim"
-                value={stats.totalLikes}
-                prefix={<HeartOutlined style={{ color: '#f5222d' }} />}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={8}>
-            <Card hoverable>
-              <Statistic
-                title="Tổng sao đánh giá"
-                value={stats.totalRatingStars}
-                prefix={<StarOutlined style={{ color: '#faad14' }} />}
-              />
-            </Card>
-          </Col>
-        </Row>
+        <ClientOnly>
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col xs={24} sm={12} lg={8}>
+              <Card hoverable>
+                <Statistic
+                  title="Tổng số phim"
+                  value={stats.totalMovies}
+                  prefix={<VideoCameraOutlined style={{ color: '#e50914' }} />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={8}>
+              <Card hoverable>
+                <Statistic
+                  title="Người dùng"
+                  value={stats.totalUsers}
+                  prefix={<UserOutlined style={{ color: '#1677ff' }} />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={8}>
+              <Card hoverable>
+                <Statistic
+                  title="Bình luận"
+                  value={stats.totalComments}
+                  prefix={<CommentOutlined style={{ color: '#52c41a' }} />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={8}>
+              <Card hoverable>
+                <Statistic
+                  title="Lượt xem"
+                  value={stats.totalViews}
+                  prefix={<EyeOutlined style={{ color: '#722ed1' }} />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={8}>
+              <Card hoverable>
+                <Statistic
+                  title="Lượt tim"
+                  value={stats.totalLikes}
+                  prefix={<HeartOutlined style={{ color: '#f5222d' }} />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} lg={8}>
+              <Card hoverable>
+                <Statistic
+                  title="Tổng sao đánh giá"
+                  value={stats.totalRatingStars}
+                  prefix={<StarOutlined style={{ color: '#faad14' }} />}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </ClientOnly>
 
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col xs={24} xl={18}>

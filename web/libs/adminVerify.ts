@@ -1,10 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { adminAuth } from './adminAuthMiddleware';
 import serverAuth from './serverAuth';
-import { isAdminEmail } from './adminAuth';
 
 /**
- * Verify request as admin - accepts either admin JWT or user session with admin email
+ * Verify request as admin - checks user role from session
+ * Returns object with user info if admin, or null if not admin
  */
 export const verifyAdminAccess = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
@@ -19,17 +19,20 @@ export const verifyAdminAccess = async (req: NextApiRequest, res: NextApiRespons
       }
     }
 
-    // Fall back to user session with admin email
+    // Fall back to user session - check role field
     const userSession = await serverAuth(req, res);
     if (!userSession) {
       return null;
     }
 
-    if (isAdminEmail(userSession.currentUser.email)) {
+    // Check if user has ADMIN role
+    const userRole = (userSession.currentUser as any).role;
+    if (userRole === 'ADMIN') {
       return {
         id: userSession.currentUser.id,
         email: userSession.currentUser.email,
         name: userSession.currentUser.name,
+        role: userRole,
       };
     }
 
@@ -39,3 +42,4 @@ export const verifyAdminAccess = async (req: NextApiRequest, res: NextApiRespons
     return null;
   }
 };
+

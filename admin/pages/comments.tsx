@@ -9,6 +9,7 @@ import {
   FilterOutlined,
 } from '@ant-design/icons';
 import AdminLayout from '../components/AdminLayout';
+import { ClientOnly } from '../hooks/useHydration';
 import api from '../lib/api';
 
 interface Comment {
@@ -249,58 +250,62 @@ const CommentsPage: React.FC = () => {
   return (
     <AdminLayout>
       <div>
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: '0 0 8px 0', fontSize: 24, fontWeight: 600 }}>
-            Quản lý bình luận
-          </h1>
-          <p style={{ margin: 0, color: '#888' }}>
-            Tổng cộng {total} bình luận
-          </p>
-        </div>
+        <ClientOnly>
+          <div style={{ marginBottom: 24 }}>
+            <h1 style={{ margin: '0 0 8px 0', fontSize: 24, fontWeight: 600 }}>
+              Quản lý bình luận
+            </h1>
+            <p style={{ margin: 0, color: '#888' }}>
+              Tổng cộng {total} bình luận
+            </p>
+          </div>
+        </ClientOnly>
 
         {/* Stats Cards */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={12} sm={6}>
-            <Card hoverable>
-              <Statistic
-                title="Tất cả"
-                value={stats.all}
-                prefix={<CommentOutlined />}
-                valueStyle={{ fontSize: 24 }}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card hoverable>
-              <Statistic
-                title="Chờ duyệt"
-                value={stats.pending}
-                prefix={<FilterOutlined />}
-                valueStyle={{ fontSize: 24, color: '#faad14' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card hoverable>
-              <Statistic
-                title="Đã duyệt"
-                value={stats.approved}
-                prefix={<CheckOutlined />}
-                valueStyle={{ fontSize: 24, color: '#52c41a' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card hoverable>
-              <Statistic
-                title="Từ chối"
-                value={stats.rejected}
-                prefix={<CloseOutlined />}
-                valueStyle={{ fontSize: 24, color: '#ff4d4f' }}
-              />
-            </Card>
-          </Col>
-        </Row>
+        <ClientOnly>
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col xs={12} sm={6}>
+              <Card hoverable>
+                <Statistic
+                  title="Tất cả"
+                  value={stats.all}
+                  prefix={<CommentOutlined />}
+                  valueStyle={{ fontSize: 24 }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card hoverable>
+                <Statistic
+                  title="Chờ duyệt"
+                  value={stats.pending}
+                  prefix={<FilterOutlined />}
+                  valueStyle={{ fontSize: 24, color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card hoverable>
+                <Statistic
+                  title="Đã duyệt"
+                  value={stats.approved}
+                  prefix={<CheckOutlined />}
+                  valueStyle={{ fontSize: 24, color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card hoverable>
+                <Statistic
+                  title="Từ chối"
+                  value={stats.rejected}
+                  prefix={<CloseOutlined />}
+                  valueStyle={{ fontSize: 24, color: '#ff4d4f' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </ClientOnly>
 
         {/* Filter Tabs */}
         <Card style={{ marginBottom: 16 }}>

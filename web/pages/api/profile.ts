@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "../../libs/prismadb";
 import serverAuth from "../../libs/serverAuth";
-import { isAdminEmail } from "../../libs/adminAuth";
 
 const ALLOWED_ORIGINS = new Set(["http://localhost:3000", "http://localhost:3002"]);
 
@@ -87,8 +86,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // PATCH: Update user profile (admin only)
     if (req.method === "PATCH") {
-      // Verify admin
-      if (!isAdminEmail(currentUser.email)) {
+      // Verify admin - check role from session
+      const userRole = (currentUser as any).role;
+      if (userRole !== "ADMIN") {
         return res.status(403).json({ error: "Admin access required" });
       }
 
