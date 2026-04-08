@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
+    "prestart": "prisma db push --skip-generate || true",
     "start": "next start",
     "lint": "next lint",
     "seed:roles": "ts-node -P tsconfig.json src/seedUserRoles.ts"

@@ -6,7 +6,7 @@
     "predev": "prisma generate",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
-    "prestart": "prisma generate",
+    "prestart": "prisma generate && prisma db push --skip-generate",
     "start": "node dist/index.js",
     "seed": "ts-node src/seed.ts",
     "seed:reset": "ts-node src/seed.ts --truncate",
