@@ -455,7 +455,7 @@ async function main() {
 
   let nextCodeNum = 1;
   for (const code of usedCodes) {
-    const match = code.match(/^MOV-(\d+)$/);
+    const match = (code as string).match(/^MOV-(\d+)$/);
     if (!match) continue;
     const parsed = parseInt(match[1], 10);
     if (Number.isFinite(parsed) && parsed >= nextCodeNum) {
