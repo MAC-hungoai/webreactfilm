@@ -17,7 +17,7 @@ export function useHydration() {
 /**
  * Wrapper component to safely render client-only content
  */
-export function ClientOnly({ children }: { children: React.ReactNode }): JSX.Element | null {
+export function ClientOnly({ children }: { children: React.ReactNode }) {
   const isHydrated = useHydration();
   return isHydrated ? <>{children}</> : null;
 }
