@@ -30,6 +30,11 @@ app.use(express.json());
 // Swagger docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Health check root
+app.get('/', (_req, res) => {
+  res.json({ status: 'ok', message: 'Backend is running' });
+});
+
 // Routes
 app.use('/api/movies', movieRoutes);
 app.use('/api/comments', commentRoutes);
