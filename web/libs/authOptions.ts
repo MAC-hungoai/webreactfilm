@@ -6,6 +6,7 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { compare } from 'bcrypt';
 import { prisma } from './prismadb';
 import { isAdminEmail } from './adminAuth';
+import { UserRole } from '@prisma/client';
 
 // Only include OAuth providers if credentials are configured
 const providers: AuthOptions['providers'] = [];
@@ -133,7 +134,7 @@ export const authOptions: AuthOptions = {
         if (currentRole !== (shouldBeAdmin ? 'ADMIN' : 'USER')) {
           await prisma.user.update({
             where: { id: user.id },
-            data: { role: shouldBeAdmin ? 'ADMIN' : 'USER' }
+            data: { role: shouldBeAdmin ? UserRole.ADMIN : UserRole.USER }
           });
         }
       }
