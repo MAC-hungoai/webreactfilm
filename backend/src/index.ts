@@ -8,6 +8,9 @@ import commentAdminRoutes from './routes/commentsAdmin';
 import analyticsRoutes from './routes/analytics';
 import userRoutes from './routes/users';
 import seedRoutes from './routes/seedRoutes';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
