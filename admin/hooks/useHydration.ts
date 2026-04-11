@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createElement, Fragment, type ReactNode, useEffect, useState } from 'react';
 
 /**
  * Hook to prevent hydration errors
@@ -17,7 +17,7 @@ export function useHydration() {
 /**
  * Wrapper component to safely render client-only content
  */
-export function ClientOnly({ children }: { children: React.ReactNode }) {
+export function ClientOnly({ children }: { children: ReactNode }) {
   const isHydrated = useHydration();
-  return isHydrated ? <>{children}</> : null;
+  return isHydrated ? createElement(Fragment, null, children) : null;
 }

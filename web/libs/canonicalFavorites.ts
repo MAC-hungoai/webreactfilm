@@ -60,7 +60,11 @@ export const resolveCanonicalFavoriteIds = async (favoriteIds: unknown[]) => {
     }),
   ]);
 
-  const favoriteMovieById = new Map(favoriteMovies.map((movie) => [movie.id, movie]));
+  const favoriteMovieById = new Map<string, MinimalMovieRecord>(
+    favoriteMovies.map(
+      (movie): [string, MinimalMovieRecord] => [movie.id, movie]
+    )
+  );
   const publishedMovieByTitleKey = new Map<string, MinimalMovieRecord>();
 
   for (const movie of publishedMovies) {
