@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build",
-    "prestart": "prisma db push --skip-generate || true",
+    "build": "prisma generate && next build",
+    "prestart": "prisma generate && (prisma db push --skip-generate || echo \"[prestart] Prisma db push skipped; continuing startup\")",
     "start": "next start",
     "lint": "next lint",
     "seed:roles": "ts-node -P tsconfig.json src/seedUserRoles.ts"
