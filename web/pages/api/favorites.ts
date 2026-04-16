@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const user = await prisma.user.update({
         where: { email: currentUser.email ?? "" },
         data: {
-          favoriteIds: { set: favoriteIds.filter((favoriteId) => !movieIdsToRemove.has(favoriteId)) },
+          favoriteIds: { set: favoriteIds.filter((favoriteId: string) => !movieIdsToRemove.has(favoriteId)) },
         },
       });
 
