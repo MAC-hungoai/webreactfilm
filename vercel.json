@@ -1,11 +1,13 @@
 {
   "version": 2,
   "monorepo": true,
+  "crons": [],
   "projects": [
     {
       "name": "web",
       "path": "web",
-      "rootDirectory": "web"
+      "rootDirectory": "web",
+      "buildCommand": "rm -rf .next node_modules/.cache && npm run build"
     },
     {
       "name": "backend",
