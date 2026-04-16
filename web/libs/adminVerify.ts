@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { adminAuth } from './adminAuthMiddleware';
-import serverAuth from './serverAuth';
+import { getServerSession } from 'next-auth';
+import { prisma } from './prismadb';
+import { authOptions } from './authOptions';
 
 /**
  * Verify request as admin - checks user role from session
@@ -12,27 +13,45 @@ export const verifyAdminAccess = async (req: NextApiRequest, res: NextApiRespons
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
-      const { verifyAdminJWT } = require('./adminJwt');
-      const payload = verifyAdminJWT(token);
-      if (payload) {
-        return payload; // Admin verified
+      try {
+        const { verifyAdminJWT } = require('./adminJwt');
+        const payload = verifyAdminJWT(token);
+        if (payload) {
+          return payload; // Admin verified
+        }
+      } catch (jwtError) {
+        console.log('JWT verification failed, trying session auth');
       }
     }
 
     // Fall back to user session - check role field
-    const userSession = await serverAuth(req, res);
-    if (!userSession) {
-      return null;
+    const session = await getServerSession(req, res, authOptions);
+    
+    if (!session?.user?.email) {
+      return null; // Not authenticated
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      }
+    });
+
+    if (!user) {
+      return null; // User not found
     }
 
     // Check if user has ADMIN role
-    const userRole = (userSession.currentUser as any).role;
-    if (userRole === 'ADMIN') {
+    if (user.role === 'ADMIN') {
       return {
-        id: userSession.currentUser.id,
-        email: userSession.currentUser.email,
-        name: userSession.currentUser.name,
-        role: userRole,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
       };
     }
 

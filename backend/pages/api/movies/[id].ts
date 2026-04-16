@@ -1,7 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import prisma from '../../../src/prisma'
 
 export default async function handler(
   req: NextApiRequest,
@@ -13,16 +11,13 @@ export default async function handler(
     if (req.method === 'GET') {
       const movie = await prisma.movie.findUnique({
         where: { id: String(id) },
-        include: {
-          genre: true,
-        },
       })
       if (!movie) {
         return res.status(404).json({ error: 'Movie not found' })
       }
       res.status(200).json(movie)
     } else if (req.method === 'PUT') {
-      const { title, description, videoUrl, thumbnailUrl, genreId } = req.body
+      const { title, description, videoUrl, imageUrl, categories, slug } = req.body
 
       const movie = await prisma.movie.update({
         where: { id: String(id) },
@@ -30,11 +25,9 @@ export default async function handler(
           title,
           description,
           videoUrl,
-          thumbnailUrl,
-          genreId,
-        },
-        include: {
-          genre: true,
+          imageUrl,
+          categories,
+          slug,
         },
       })
       res.status(200).json(movie)
@@ -47,6 +40,10 @@ export default async function handler(
       res.status(405).json({ error: 'Method not allowed' })
     }
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' })
+    console.error('Error in /api/movies/[id]:', error)
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? String(error) : undefined
+    })
   }
 }
