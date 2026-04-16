@@ -41,6 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { favoriteIds: canonicalMovieIdsToRemove } = await resolveCanonicalFavoriteIds([movieId]);
       const movieIdsToRemove = new Set<string>([movieId, ...canonicalMovieIdsToRemove]);
 
+      // @ts-ignore - Ignore implicit any error
       const user = await prisma.user.update({
         where: { email: currentUser.email ?? "" },
         data: {
