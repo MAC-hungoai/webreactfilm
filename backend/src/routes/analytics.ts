@@ -34,9 +34,9 @@ const normalizeLimit = (raw: unknown, granularity: Granularity): number => {
   return Math.min(max, Math.max(1, parsed));
 };
 
-const toDateKey = (date: Date) => date.toISOString().slice(0, 10);
+const toDateKey = (date: Date): string => date.toISOString().slice(0, 10);
 
-const toMonthKey = (date: Date) => {
+const toMonthKey = (date: Date): string => {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   return `${y}-${m}`;

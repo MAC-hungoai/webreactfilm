@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../libs/prismadb';
+import { DEFAULT_AVATAR_SRC } from '../../../libs/displayAvatar';
 import serverAuth from '../../../libs/serverAuth';
 
 // Type assertion to handle Prisma client
@@ -48,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'Movie not found' });
     }
 
-    // Publish immediately, admin can still reject/delete later
+    // Create comment with pending status - admin must approve before it shows on web
     const comment = await db.comment.create({
       data: {
         content: content.trim(),
@@ -56,8 +57,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userId: currentUser.id,
         userName: currentUser.name,
         userEmail: currentUser.email || null,
-        userAvatar: currentUser.image || null,
-        status: 'approved',
+        userAvatar: DEFAULT_AVATAR_SRC,
+        status: 'pending',
         likes: 0,
         dislikes: 0,
         likedBy: [],

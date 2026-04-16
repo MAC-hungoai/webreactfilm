@@ -32,17 +32,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const db = getPrisma();
 
-    // Check if comment exists and belongs to user
+    // Check if comment exists
     const comment = await db.comment.findUnique({
       where: { id: commentId }
     });
 
     if (!comment) {
-      return res.status(404).json({ error: 'Comment not found' });
+      return res.status(404).json({ error: 'Bình luận không tìm thấy' });
     }
 
-    if (comment.userId !== currentUser.id) {
-      return res.status(403).json({ error: 'You can only delete your own comments' });
+    // Check permissions: owner or admin (by role) can delete
+    const isOwner = comment.userId === currentUser.id;
+    const isAdmin = (currentUser as any).role === 'ADMIN';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Bạn không có quyền xóa bình luận này' });
     }
 
     // Delete comment and all its replies
@@ -56,10 +60,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     return res.status(200).json({ 
-      message: 'Comment deleted successfully' 
+      message: 'Xóa bình luận thành công' 
     });
   } catch (error: any) {
     console.error('Error deleting comment:', error);
-    return res.status(500).json({ error: 'Failed to delete comment' });
+    return res.status(500).json({ error: 'Xóa bình luận không thành công' });
   }
 }

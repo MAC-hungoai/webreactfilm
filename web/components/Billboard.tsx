@@ -28,6 +28,15 @@ type PreferredBannerGroup = {
 
 const PREFERRED_BANNER_GROUPS: readonly PreferredBannerGroup[] = [
   {
+    key: "conan",
+    keywords: [
+      "conan",
+      "detective conan",
+      "tham tu lung danh conan",
+      "meitantei conan",
+    ],
+  },
+  {
     key: "gojo",
     keywords: ["gojo"],
   },
@@ -51,26 +60,24 @@ const PREFERRED_BANNER_GROUPS: readonly PreferredBannerGroup[] = [
   {
     key: "pokemon",
     keywords: ["pokemon", "pokemon horizons", "pokemon journeys"],
+    preferredKeywords: [
+      "pokemon suc manh cua chung ta",
+      "suc manh cua chung ta",
+      "pokemon the power of us",
+      "the power of us",
+      "pokemon movie 21",
+    ],
   },
   {
     key: "beloved-summer",
     keywords: ["mua he yeu dau", "our beloved summer"],
   },
 ];
-const ALLOWED_BANNER_KEYWORDS = [
-  "gojo",
-  "sukuna",
-  "vo han thanh",
-  "infinity castle",
-  "thanh guom diet quy vo han thanh",
-  "demon slayer infinity castle",
-  "doctor slump",
-  "bac si slump",
-  "pokemon",
-  "pokemon horizons",
-  "pokemon journeys",
-  "mua he yeu dau",
-  "our beloved summer",
+const BLOCKED_BANNER_KEYWORDS = [
+  "mua do",
+  "phap su tien tang",
+  "frieren",
+  "sousou no frieren",
 ] as const;
 
 const resolveBannerSource = (movie?: Partial<movieState> | null): string => {
@@ -173,6 +180,21 @@ function getBannerSearchText(movie?: Partial<movieState> | null): string {
   ].filter(Boolean).join(" "));
 }
 
+function getBannerDedupKey(movie?: Partial<movieState> | null): string {
+  if (!movie) return "";
+
+  const normalizedTitle = normalizeText(movie.title);
+  if (normalizedTitle) return normalizedTitle;
+
+  const normalizedSlug = normalizeText(movie.slug);
+  if (normalizedSlug) return normalizedSlug;
+
+  const normalizedCode = normalizeText(movie.code);
+  if (normalizedCode) return normalizedCode;
+
+  return String(movie.id || "").trim();
+}
+
 function movieMatchesAnyKeyword(
   movie: Partial<movieState> | null | undefined,
   keywords: readonly string[] | undefined
@@ -193,7 +215,11 @@ function movieHasAnyKeyword(
 }
 
 function isAllowedForBanner(movie?: Partial<movieState> | null): boolean {
-  return movieMatchesAnyKeyword(movie, ALLOWED_BANNER_KEYWORDS);
+  if (!movie) return false;
+  const status = String(movie.status || "").toLowerCase();
+  if (status !== "published") return false;
+  if (movieMatchesAnyKeyword(movie, BLOCKED_BANNER_KEYWORDS)) return false;
+  return true;
 }
 
 function hasRenderableBannerMedia(movie?: Partial<movieState> | null): boolean {
@@ -207,7 +233,7 @@ function hasRenderableBannerMedia(movie?: Partial<movieState> | null): boolean {
 
 function buildPreferredBannerPool(movies: movieState[]): movieState[] {
   const selected: movieState[] = [];
-  const seenMovieIds = new Set<string>();
+  const seenBannerKeys = new Set<string>();
 
   for (const group of PREFERRED_BANNER_GROUPS) {
     const groupCandidates = movies.filter((movie) => (
@@ -224,14 +250,25 @@ function buildPreferredBannerPool(movies: movieState[]): movieState[] {
     const sourcePool = preferredCandidates.length ? preferredCandidates : groupCandidates;
     const motionCandidates = sourcePool.filter((movie) => hasMotionHeroMedia(movie));
     const pickedMovie = (motionCandidates.length ? motionCandidates : sourcePool)[0];
-    const movieId = String(pickedMovie?.id || "");
+    const bannerKey = getBannerDedupKey(pickedMovie);
 
-    if (!movieId || seenMovieIds.has(movieId)) continue;
-    seenMovieIds.add(movieId);
+    if (!bannerKey || seenBannerKeys.has(bannerKey)) continue;
+    seenBannerKeys.add(bannerKey);
     selected.push(pickedMovie);
   }
 
   return selected;
+}
+
+function dedupeBannerMovies(movies: movieState[]): movieState[] {
+  const seenBannerKeys = new Set<string>();
+
+  return movies.filter((movie) => {
+    const bannerKey = getBannerDedupKey(movie);
+    if (!bannerKey || seenBannerKeys.has(bannerKey)) return false;
+    seenBannerKeys.add(bannerKey);
+    return true;
+  });
 }
 
 const Billboard: React.FC = () => {
@@ -240,7 +277,7 @@ const Billboard: React.FC = () => {
   const getMovie = useGetSingleMovie();
 
   const [mediaRatioByMovieId, setMediaRatioByMovieId] = useState<Record<string, number>>({});
-  const [heroIndexSeed, setHeroIndexSeed] = useState(() => Math.floor(Math.random() * 1000));
+  const [heroIndexSeed, setHeroIndexSeed] = useState(0);
   const [heroMuted, setHeroMuted] = useState(true);
   const directHeroRef = useRef<HTMLVideoElement | null>(null);
   const youtubeHeroRef = useRef<HTMLIFrameElement | null>(null);
@@ -281,7 +318,9 @@ const Billboard: React.FC = () => {
 
   const bannerCandidates = useMemo(() => {
     if (!moviesList || moviesList.length === 0) return [];
-    const allowedBannerMovies = moviesList.filter((movie) => isAllowedForBanner(movie));
+    const allowedBannerMovies = dedupeBannerMovies(
+      moviesList.filter((movie) => isAllowedForBanner(movie))
+    );
     if (!allowedBannerMovies.length) return [];
 
     const wideMovies = allowedBannerMovies.filter((movie) => {
@@ -304,13 +343,13 @@ const Billboard: React.FC = () => {
       return preferredBannerPool.slice(0, HERO_ROTATION_POOL_SIZE);
     }
 
-    const selectedMovieIds = new Set(
-      preferredBannerPool.map((movie) => String(movie?.id || ""))
+    const selectedBannerKeys = new Set(
+      preferredBannerPool.map((movie) => getBannerDedupKey(movie))
     );
 
     const fillerCandidates = bannerCandidates.filter((movie) => {
-      const movieId = String(movie?.id || "");
-      if (!movieId || selectedMovieIds.has(movieId)) return false;
+      const bannerKey = getBannerDedupKey(movie);
+      if (!bannerKey || selectedBannerKeys.has(bannerKey)) return false;
       return hasRenderableBannerMedia(movie);
     });
 
@@ -484,8 +523,8 @@ const Billboard: React.FC = () => {
   if (!randomMovie) return null;
 
   return (
-    <section className="relative">
-      <div className="relative w-full h-[56.25vw] min-h-[500px] max-h-[820px] overflow-hidden">
+    <section className="relative h-[100svh] min-h-screen">
+      <div className="relative h-full w-full overflow-hidden">
         {useContainForPoster && (
           <img
             src={mediaPoster}
@@ -533,7 +572,7 @@ const Billboard: React.FC = () => {
         )}
 
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-transparent via-transparent to-transparent" />
-        <div className="absolute inset-x-0 top-[68px] md:top-[76px] bottom-0 bg-gradient-to-r from-black/62 via-black/28 to-transparent" />
+        {/* Removed side gradient overlay for fullscreen effect */}
         <div className="absolute inset-x-0 bottom-0 h-56 md:h-72 bg-gradient-to-t from-black/88 via-black/58 to-transparent" />
         {canToggleHeroAudio ? (
           <div className="group absolute right-4 md:right-8 bottom-[30%] z-20 flex flex-col items-center gap-2">

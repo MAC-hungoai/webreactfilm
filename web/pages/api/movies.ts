@@ -4,6 +4,7 @@ import { prisma } from "../../libs/prismadb";
 const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:5000";
 const ALLOWED_SORT_FIELDS = new Set(["createdAt", "updatedAt", "title", "releaseDate", "duration"]);
 const EVENTS_COLLECTION = "movie_engagement_events";
+const ALLOWED_ORIGINS = new Set(["http://localhost:3000", "http://localhost:3002"]);
 
 const toNonNegativeInt = (raw: unknown): number | null => {
   if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) return Math.floor(raw);
@@ -118,6 +119,18 @@ const buildQueryString = (query: NextApiRequest["query"]) => {
   return params.toString();
 };
 
+// CORS configuration
+const setCors = (req: NextApiRequest, res: NextApiResponse) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+};
+
 const fetchFromLocalDb = async (req: NextApiRequest) => {
   const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? "20"), 10) || 20));
@@ -167,6 +180,14 @@ const fetchFromLocalDb = async (req: NextApiRequest) => {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Set CORS headers
+  setCors(req, res);
+
+  // Handle OPTIONS requests
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }

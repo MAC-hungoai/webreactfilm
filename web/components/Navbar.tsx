@@ -5,6 +5,9 @@ import { BsBell, BsChevronDown, BsSearch } from "react-icons/bs";
 import AccountMenu from "./AccountMenu";
 import MobileMenu from "./MobileMenu";
 import NavbarItem from "./NavbarItem";
+import { navigateToWatch } from "../libs/watchNavigation";
+import { getHeaderAvatarSrc } from "../libs/displayAvatar";
+import { useAppSelector } from "../store/index";
 
 const Navbar: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -17,6 +20,8 @@ const Navbar: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
+  const currentUser = useAppSelector((state) => state.profile.profile);
+  const headerAvatarSrc = getHeaderAvatarSrc(currentUser?.image);
 
   useEffect(() => {
     return () => {
@@ -91,7 +96,7 @@ const Navbar: React.FC = () => {
     setShowSearch(false);
     setSearchQuery("");
     setSearchResults([]);
-    router.push(`/watch/${movieId}`);
+    void navigateToWatch(router, movieId);
   }, [router]);
 
   return (
@@ -197,9 +202,9 @@ const Navbar: React.FC = () => {
             onClick={toggleAccountMenu}
             className="flex flex-row items-center gap-2 cursor-pointer relative"
           >
-            <div className="w-6 h-6 lg:w-10 lg:h-10 rounded-md overflow-hidden">
+            <div className="w-6 h-6 lg:w-10 lg:h-10 rounded-md overflow-hidden border-2 border-blue-500 transition-colors">
               <img
-                src="/images/default-blue.png"
+                src={headerAvatarSrc}
                 alt="profile image"
                 className="w-full h-full object-cover block"
               />

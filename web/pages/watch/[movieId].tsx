@@ -11,9 +11,11 @@ import { MdClosedCaption } from "react-icons/md";
 import { MdFullscreen, MdFullscreenExit } from "react-icons/md";
 import useMovie from "../../hooks/useMovie";
 import useCurrentUser from "../../hooks/useCurrentUser";
+import { getBrandIntroUrl } from "../../libs/brandIntro";
 import AccountMenu from "../../components/AccountMenu";
 import CommentSection from "../../components/CommentSection";
 import IntroN from "../../components/IntroN";
+import { buildWatchPath, getWatchIntroAudioIntentKey, navigateToWatch } from "../../libs/watchNavigation";
 
 type RatingApiResponse = {
   movieId: string;
@@ -32,8 +34,7 @@ const parsedIntroSkipSeconds = Number(process.env.NEXT_PUBLIC_INTRO_SKIP_SECONDS
 const INTRO_SKIP_SECONDS = Number.isFinite(parsedIntroSkipSeconds)
   ? Math.max(0, Math.floor(parsedIntroSkipSeconds))
   : 0;
-const BRAND_INTRO_URL =
-  process.env.NEXT_PUBLIC_BRAND_INTRO_URL || "https://youtu.be/GV3HUDMQ-F8?si=gQQSweVWrmLqX2Vd";
+const BRAND_INTRO_URL = getBrandIntroUrl();
 const parsedBrandIntroDurationMs = Number(
   process.env.NEXT_PUBLIC_BRAND_INTRO_DURATION_MS ?? process.env.NEXT_PUBLIC_INTRO_DURATION_MS
 );
@@ -203,6 +204,53 @@ function toYoutubeEmbed(raw: string, autoplay = true): string {
   }
 }
 
+function toYoutubeWatchUrl(raw: string): string {
+  try {
+    const u = new URL(raw.trim());
+    const buildWatchUrl = (id: string) => `https://www.youtube.com/watch?v=${encodeURIComponent(id)}`;
+
+    if (u.hostname.includes("youtube.com")) {
+      const id = u.searchParams.get("v");
+      if (id) return buildWatchUrl(id);
+
+      if (u.pathname.startsWith("/shorts/")) {
+        const shortId = u.pathname.split("/")[2];
+        if (shortId) return buildWatchUrl(shortId);
+      }
+
+      if (u.pathname.startsWith("/embed/")) {
+        const embedId = u.pathname.split("/")[2];
+        if (embedId) return buildWatchUrl(embedId);
+      }
+    }
+
+    if (u.hostname.includes("youtu.be")) {
+      const id = u.pathname.replace("/", "");
+      if (id) return buildWatchUrl(id);
+    }
+
+    return raw.trim();
+  } catch {
+    return raw.trim();
+  }
+}
+
+function getYoutubeEmbedIssueMessage(code: number | null): string {
+  if (code === 101 || code === 150) {
+    return "Video nay bi YouTube chan nhung hoac gioi han do tuoi, nen khong the phat truc tiep trong Nextflix.";
+  }
+
+  if (code === 100) {
+    return "Video YouTube nay khong con kha dung hoac da duoc dat rieng tu.";
+  }
+
+  if (code === 2 || code === 5) {
+    return "Video YouTube nay khong ho tro phat inline on dinh trong player hien tai.";
+  }
+
+  return "Video YouTube nay khong the phat trong khung nhung. Ban co the mo truc tiep tren YouTube.";
+}
+
 function isYoutubeUrl(raw: string): boolean {
   try {
     const u = new URL(raw.trim());
@@ -359,6 +407,8 @@ const WatchPage = () => {
   const [showYoutubeEndOverlay, setShowYoutubeEndOverlay] = useState(false);
   const [showReloadPreviewOverlay, setShowReloadPreviewOverlay] = useState(shouldStartPausedAfterReload);
   const [showPauseMaskOverlay, setShowPauseMaskOverlay] = useState(false);
+  const [youtubePlaybackIssue, setYoutubePlaybackIssue] = useState("");
+  const [youtubeHasPlaybackSignal, setYoutubeHasPlaybackSignal] = useState(false);
 
   const lastPlaybackTimeRef = useRef(0);
   const youtubeFrameRef = useRef<HTMLIFrameElement | null>(null);
@@ -382,6 +432,38 @@ const WatchPage = () => {
     if (!validMovieId || !chosenUrl) return "";
     return `${validMovieId}:${mode || "movie"}`;
   }, [validMovieId, chosenUrl, mode]);
+
+  const shouldForceIntroAudio = useMemo(() => {
+    if (!introKey || typeof window === "undefined") return false;
+    try {
+      return window.sessionStorage.getItem(getWatchIntroAudioIntentKey(introKey)) === "1";
+    } catch {
+      return false;
+    }
+  }, [introKey]);
+
+  // Keep repeated auto-open and reload flows muted, but preserve audio for explicit watch clicks.
+  const introIsMuted = useMemo(() => {
+    if (!introKey) return false;
+    if (shouldForceIntroAudio) return false;
+    try {
+      const storageKey = `nextflix:watch_intro_run_count:${introKey}`;
+      const runCountStr = window.sessionStorage.getItem(storageKey);
+      const runCount = runCountStr ? parseInt(runCountStr, 10) : 0;
+      return runCount > 0;
+    } catch {
+      return false;
+    }
+  }, [introKey, shouldForceIntroAudio]);
+
+  useEffect(() => {
+    if (!introKey || typeof window === "undefined") return;
+    try {
+      window.sessionStorage.removeItem(getWatchIntroAudioIntentKey(introKey));
+    } catch {
+      // Ignore storage cleanup failures.
+    }
+  }, [introKey]);
 
   const showPlaybackIntro = Boolean(introKey)
     && completedIntroKey !== introKey
@@ -407,6 +489,10 @@ const WatchPage = () => {
   }, [isTrailerMode, movie]);
   const playbackEmbedUrl = useMemo(() => trailerEmbedUrl, [trailerEmbedUrl]);
   const isYouTubeSource = useMemo(() => isYoutubeUrl(playbackSourceUrl), [playbackSourceUrl]);
+  const youtubeWatchUrl = useMemo(() => {
+    if (!chosenUrl || !isYoutubeUrl(chosenUrl)) return "";
+    return toYoutubeWatchUrl(chosenUrl);
+  }, [chosenUrl]);
   const isPlayableSurface = Boolean(playbackSourceUrl) && (isDirectVideo || Boolean(playbackEmbedUrl));
   const directSubtitleTracks = useMemo(() => buildDirectSubtitleTracks(movie), [movie]);
   const canToggleCaptions = isDirectVideo
@@ -452,7 +538,7 @@ const WatchPage = () => {
   );
   const sharePath = useMemo(() => {
     if (!validMovieId) return "/watch";
-    return isTrailerMode ? `/watch/${validMovieId}?mode=trailer` : `/watch/${validMovieId}`;
+    return buildWatchPath(validMovieId, isTrailerMode ? "trailer" : "movie");
   }, [isTrailerMode, validMovieId]);
   const shareOrigin = useMemo(() => {
     if (SHARE_PUBLIC_BASE_URL) {
@@ -520,6 +606,7 @@ const WatchPage = () => {
     iframe.contentWindow.postMessage(JSON.stringify({ event: "listening", id: "watch-player" }), "*");
     sendYoutubeCommand("addEventListener", ["onStateChange"]);
     sendYoutubeCommand("addEventListener", ["onReady"]);
+    sendYoutubeCommand("addEventListener", ["onError"]);
     sendYoutubeCommand("addEventListener", ["onPlaybackRateChange"]);
     sendYoutubeCommand("addEventListener", ["onPlaybackQualityChange"]);
     if (WATCH_AUTOPLAY_MUTED) {
@@ -679,6 +766,16 @@ const WatchPage = () => {
     if (!introKey) return;
     WATCH_INTRO_COMPLETED_KEYS.add(introKey);
     setCompletedIntroKey((prev) => (prev === introKey ? prev : introKey));
+    
+    // Increment intro run count for this session
+    try {
+      const storageKey = `nextflix:watch_intro_run_count:${introKey}`;
+      const runCountStr = window.sessionStorage.getItem(storageKey);
+      const runCount = runCountStr ? parseInt(runCountStr, 10) : 0;
+      window.sessionStorage.setItem(storageKey, String(runCount + 1));
+    } catch {
+      // Ignore sessionStorage errors
+    }
   }, [introKey]);
 
   useEffect(() => {
@@ -694,6 +791,8 @@ const WatchPage = () => {
     setShowYoutubeEndOverlay(false);
     setShowReloadPreviewOverlay(shouldStartPausedAfterReload);
     setShowPauseMaskOverlay(false);
+    setYoutubePlaybackIssue("");
+    setYoutubeHasPlaybackSignal(false);
     lastPlayerSyncAtRef.current = Date.now();
   }, [chosenUrl, fallbackDurationSeconds, showPlaybackIntro, shouldStartPausedAfterReload]);
 
@@ -838,9 +937,22 @@ const WatchPage = () => {
         requestYoutubeSnapshot();
         return;
       }
+      if (payload.event === "onError") {
+        const errorCode = coerceNumber(payload.info);
+        setYoutubePlaybackIssue(getYoutubeEmbedIssueMessage(errorCode));
+        setPlayerIsPlaying(false);
+        setShowPauseMaskOverlay(false);
+        setShowReloadPreviewOverlay(false);
+        setShowYoutubeEndOverlay(false);
+        return;
+      }
       if (payload.event === "onStateChange") {
         const state = coerceNumber(payload.info);
         if (state !== null) {
+          if (state === 1 || state === 2) {
+            setYoutubeHasPlaybackSignal(true);
+            if (youtubePlaybackIssue) setYoutubePlaybackIssue("");
+          }
           setPlayerIsPlaying(state === 1);
           if (state === 2) {
             setShowPauseMaskOverlay(true);
@@ -862,12 +974,18 @@ const WatchPage = () => {
 
       const currentTime = coerceNumber(info.currentTime);
       if (currentTime !== null && currentTime >= 0) {
+        if (currentTime > 0) {
+          setYoutubeHasPlaybackSignal(true);
+          if (youtubePlaybackIssue) setYoutubePlaybackIssue("");
+        }
         setPlayerCurrentTime(currentTime);
         lastPlaybackTimeRef.current = currentTime;
         lastPlayerSyncAtRef.current = Date.now();
       }
       const duration = coerceNumber(info.duration);
       if (duration !== null && duration > 0) {
+        setYoutubeHasPlaybackSignal(true);
+        if (youtubePlaybackIssue) setYoutubePlaybackIssue("");
         setPlayerDuration(duration);
       }
       if (
@@ -909,7 +1027,22 @@ const WatchPage = () => {
       window.clearInterval(timer);
       window.removeEventListener("message", onMessage);
     };
-  }, [initializeYoutubeBridge, isDirectVideo, playbackEmbedUrl, requestYoutubeSnapshot, sendYoutubeCommand, shouldStartPausedAfterReload]);
+  }, [initializeYoutubeBridge, isDirectVideo, playbackEmbedUrl, requestYoutubeSnapshot, sendYoutubeCommand, shouldStartPausedAfterReload, youtubePlaybackIssue]);
+
+  useEffect(() => {
+    if (isDirectVideo || !playbackEmbedUrl) return;
+    if (youtubeHasPlaybackSignal || youtubePlaybackIssue) return;
+
+    const timer = window.setTimeout(() => {
+      setYoutubePlaybackIssue("Video YouTube nay khong the phat trong Nextflix. Ban co the mo truc tiep tren YouTube.");
+      setPlayerIsPlaying(false);
+      setShowPauseMaskOverlay(false);
+      setShowReloadPreviewOverlay(false);
+      setShowYoutubeEndOverlay(false);
+    }, 4500);
+
+    return () => window.clearTimeout(timer);
+  }, [isDirectVideo, playbackEmbedUrl, youtubeHasPlaybackSignal, youtubePlaybackIssue]);
 
   useEffect(() => {
     if (isDirectVideo || !playbackEmbedUrl) return;
@@ -1210,7 +1343,7 @@ const WatchPage = () => {
     setShowSearch(false);
     setSearchQuery("");
     setSearchResults([]);
-    router.push(`/watch/${targetMovieId}`);
+    void navigateToWatch(router, targetMovieId);
   }, [router]);
 
   const openShareWindow = useCallback((url: string) => {
@@ -1348,6 +1481,7 @@ const WatchPage = () => {
         alt="Brand intro"
         onFinished={handlePlaybackIntroFinished}
         finishAfterMs={INTRO_DURATION_MS}
+        isMuted={introIsMuted}
       />
     );
   }
@@ -1478,6 +1612,40 @@ const WatchPage = () => {
                   >
                     Xem lại
                   </button>
+                </div>
+              ) : null}
+              {youtubePlaybackIssue ? (
+                <div className="absolute inset-0 z-30 bg-black/92 flex items-center justify-center px-6 text-center">
+                  <div className="max-w-2xl">
+                    <p className="text-2xl font-semibold text-white">
+                      Khong the phat video nay trong player nhung
+                    </p>
+                    <p className="mt-3 text-base text-white/80">
+                      {youtubePlaybackIssue}
+                    </p>
+                    <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                      {youtubeWatchUrl ? (
+                        <a
+                          href={youtubeWatchUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center justify-center rounded-md bg-white px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-red-600 hover:text-white"
+                        >
+                          Mo tren YouTube
+                        </a>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => router.back()}
+                        className="inline-flex items-center justify-center rounded-md border border-white/30 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                      >
+                        Quay lai
+                      </button>
+                    </div>
+                    <p className="mt-4 text-sm text-white/60">
+                      Neu day la phim chinh, nen doi `videoUrl` sang link mp4/m3u8 trong admin de phat on dinh hon.
+                    </p>
+                  </div>
                 </div>
               ) : null}
             </div>

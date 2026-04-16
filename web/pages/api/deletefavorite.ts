@@ -1,7 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { without } from "lodash";
 
 import { prisma } from "../../libs/prismadb";
+import {
+  resolveCanonicalFavoriteIds,
+  syncCanonicalFavoriteIds,
+} from "../../libs/canonicalFavorites";
 import serverAuth from "../../libs/serverAuth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -28,11 +31,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ message: "Invalid ID" });
     }
 
-    const updatedFavoriteIds = without(currentUser.favoriteIds || [], movieId);
+    const { favoriteIds } = await syncCanonicalFavoriteIds({
+      email: currentUser.email,
+      favoriteIds: currentUser.favoriteIds ?? [],
+    });
+    const { favoriteIds: canonicalMovieIdsToRemove } = await resolveCanonicalFavoriteIds([movieId]);
+    const movieIdsToRemove = new Set<string>([movieId, ...canonicalMovieIdsToRemove]);
+    const updatedFavoriteIds = favoriteIds.filter((favoriteId) => !movieIdsToRemove.has(favoriteId));
 
     const updatedUser = await prisma.user.update({
       where: { email: currentUser.email ?? "" },
-      data: { favoriteIds: updatedFavoriteIds },
+      data: { favoriteIds: { set: updatedFavoriteIds } },
     });
 
     return res.status(200).json(updatedUser);

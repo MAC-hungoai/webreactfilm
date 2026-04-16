@@ -1,19 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "../../libs/prismadb";
-import serverAuth from "../../libs/serverAuth";
-import { isAdminEmail } from "../../libs/adminAuth";
+import { verifyAdminAccess } from "@/libs/adminVerify";
 
 const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:5000";
 
-const ALLOWED_ORIGINS = new Set(["http://localhost:3000", "http://localhost:3001"]);
-
 const setCors = (req: NextApiRequest, res: NextApiResponse) => {
   const origin = req.headers.origin;
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-  }
+  res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 };
@@ -86,17 +81,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const authResult = await serverAuth(req, res);
-  if (!authResult) return;
-
-  if (!isAdminEmail(authResult.currentUser.email)) {
-    const hasAdminConfig = Boolean(process.env.ADMIN_EMAILS?.trim());
-    return res.status(403).json({
-      error: hasAdminConfig
-        ? "Admin access required"
-        : "Admin access is not configured. Set ADMIN_EMAILS in web/.env",
-    });
-  }
+  const admin = await verifyAdminAccess(req, res);
+  if (!admin) return;
 
   try {
     const queryString = buildQueryString(req.query);

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Table, Input, Tag, Button, Space, Card, Row, Col, Statistic, Modal, message, Popconfirm } from 'antd';
 import {
   CommentOutlined,
@@ -10,8 +9,8 @@ import {
   FilterOutlined,
 } from '@ant-design/icons';
 import AdminLayout from '../components/AdminLayout';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { ClientOnly } from '../hooks/useHydration';
+import api from '../lib/api';
 
 interface Comment {
   id: string;
@@ -58,7 +57,7 @@ const CommentsPage: React.FC = () => {
   const fetchComments = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/api/comments/admin`, {
+      const response = await api.get('/api/comments/admin', {
         params: {
           page,
           limit: 20,
@@ -76,7 +75,7 @@ const CommentsPage: React.FC = () => {
       setTotal(0);
       setTotalPages(1);
       setStats({ pending: 0, approved: 0, rejected: 0, all: 0 });
-      message.error('Khong the tai danh sach binh luan');
+      message.error('Không thể tải danh sách bình luận');
     } finally {
       setLoading(false);
     }
@@ -85,7 +84,7 @@ const CommentsPage: React.FC = () => {
   const handleApprove = async (id: string) => {
     try {
       setProcessingId(id);
-      await axios.patch(`${API_URL}/api/comments/admin`, { id });
+      await api.patch('/api/comments/admin', { id, action: 'approve' });
       message.success('Duyệt bình luận thành công');
       fetchComments();
     } catch (error) {
@@ -107,7 +106,7 @@ const CommentsPage: React.FC = () => {
       onOk: async () => {
         try {
           setProcessingId(id);
-          await axios.delete(`${API_URL}/api/comments/admin`, {
+          await api.delete('/api/comments/admin', {
             params: { id },
           });
           message.success('Đã xóa bình luận thành công');
@@ -170,7 +169,7 @@ const CommentsPage: React.FC = () => {
       dataIndex: 'content',
       key: 'content',
       render: (content: string) => (
-        <div style={{ maxWidth: 300 }}>
+        <div style={{ maxWidth: 300, color: '#1f2937', fontWeight: 500 }}>
           {content.length > 80 ? content.substring(0, 80) + '...' : content}
         </div>
       ),
@@ -251,58 +250,62 @@ const CommentsPage: React.FC = () => {
   return (
     <AdminLayout>
       <div>
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: '0 0 8px 0', fontSize: 24, fontWeight: 600 }}>
-            Quản lý bình luận
-          </h1>
-          <p style={{ margin: 0, color: '#888' }}>
-            Tổng cộng {total} bình luận
-          </p>
-        </div>
+        <ClientOnly>
+          <div style={{ marginBottom: 24 }}>
+            <h1 style={{ margin: '0 0 8px 0', fontSize: 24, fontWeight: 600 }}>
+              Quản lý bình luận
+            </h1>
+            <p style={{ margin: 0, color: '#888' }}>
+              Tổng cộng {total} bình luận
+            </p>
+          </div>
+        </ClientOnly>
 
         {/* Stats Cards */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={12} sm={6}>
-            <Card hoverable>
-              <Statistic
-                title="Tất cả"
-                value={stats.all}
-                prefix={<CommentOutlined />}
-                valueStyle={{ fontSize: 24 }}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card hoverable>
-              <Statistic
-                title="Chờ duyệt"
-                value={stats.pending}
-                prefix={<FilterOutlined />}
-                valueStyle={{ fontSize: 24, color: '#faad14' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card hoverable>
-              <Statistic
-                title="Đã duyệt"
-                value={stats.approved}
-                prefix={<CheckOutlined />}
-                valueStyle={{ fontSize: 24, color: '#52c41a' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card hoverable>
-              <Statistic
-                title="Từ chối"
-                value={stats.rejected}
-                prefix={<CloseOutlined />}
-                valueStyle={{ fontSize: 24, color: '#ff4d4f' }}
-              />
-            </Card>
-          </Col>
-        </Row>
+        <ClientOnly>
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col xs={12} sm={6}>
+              <Card hoverable>
+                <Statistic
+                  title="Tất cả"
+                  value={stats.all}
+                  prefix={<CommentOutlined />}
+                  valueStyle={{ fontSize: 24 }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card hoverable>
+                <Statistic
+                  title="Chờ duyệt"
+                  value={stats.pending}
+                  prefix={<FilterOutlined />}
+                  valueStyle={{ fontSize: 24, color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card hoverable>
+                <Statistic
+                  title="Đã duyệt"
+                  value={stats.approved}
+                  prefix={<CheckOutlined />}
+                  valueStyle={{ fontSize: 24, color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card hoverable>
+                <Statistic
+                  title="Từ chối"
+                  value={stats.rejected}
+                  prefix={<CloseOutlined />}
+                  valueStyle={{ fontSize: 24, color: '#ff4d4f' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </ClientOnly>
 
         {/* Filter Tabs */}
         <Card style={{ marginBottom: 16 }}>

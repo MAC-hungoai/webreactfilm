@@ -23,18 +23,13 @@ import {
   CommentOutlined,
   DashboardOutlined,
   BarChartOutlined,
-  SettingOutlined,
   UserOutlined,
   BellOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  LogoutOutlined,
 } from '@ant-design/icons';
 import { useRouter } from 'next/router';
-import axios from 'axios';
-import { movieApi } from '../lib/api';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import api, { movieApi } from '../lib/api';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -52,6 +47,13 @@ interface AdminNotification {
   createdAt: string;
   href: string;
   type: 'comment' | 'movie' | 'system';
+}
+
+interface AdminIdentity {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
 }
 
 const READ_NOTIFICATION_STORAGE_KEY = 'nextflix.admin.readNotifications';
@@ -84,6 +86,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const [quickSearch, setQuickSearch] = useState('');
+  const [admin, setAdmin] = useState<AdminIdentity | null>(null);
 
   const getSelectedKey = () => {
     const path = router.asPath;
@@ -91,13 +94,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
     if (path.includes('comments')) return 'comments';
     if (path.includes('users')) return 'users';
     if (path.includes('analytics') || path.includes('reports')) return 'analytics';
-    if (path.includes('settings')) return 'settings';
     if (path.includes('status=draft')) return 'movies-draft';
     if (path.includes('status=published')) return 'movies-published';
     if (path.includes('status=hidden')) return 'movies-hidden';
     if (path.startsWith('/categories')) return 'categories';
     if (path.startsWith('/actors')) return 'actors';
-    if (path.startsWith('/banners')) return 'banners';
     if (path.startsWith('/movies')) return 'movies-all';
     return 'dashboard';
   };
@@ -106,33 +107,36 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
     {
       key: 'dashboard',
       icon: <DashboardOutlined />,
-      label: 'Dashboard',
+      label: 'Bảng điều khiển',
       onClick: () => router.push('/'),
     },
     {
       key: 'movies-group',
       icon: <VideoCameraOutlined />,
-      label: 'Quan ly phim',
+      label: 'Phim',
       children: [
-        { key: 'movies-all', icon: <UnorderedListOutlined />, label: 'Tat ca phim', onClick: () => router.push('/movies') },
-        { key: 'movies-draft', icon: <FileTextOutlined />, label: 'Phim nhap', onClick: () => router.push('/movies?status=draft') },
-        { key: 'movies-published', icon: <EyeOutlined />, label: 'Dang chieu', onClick: () => router.push('/movies?status=published') },
-        { key: 'movies-hidden', icon: <EyeInvisibleOutlined />, label: 'An', onClick: () => router.push('/movies?status=hidden') },
+        { key: 'movies-all', icon: <UnorderedListOutlined />, label: 'Tất cả phim', onClick: () => router.push('/movies') },
+        { key: 'movies-draft', icon: <FileTextOutlined />, label: 'Nháp', onClick: () => router.push('/movies?status=draft') },
+        { key: 'movies-published', icon: <EyeOutlined />, label: 'Đã đăng', onClick: () => router.push('/movies?status=published') },
+        { key: 'movies-hidden', icon: <EyeInvisibleOutlined />, label: 'Đã ẩn', onClick: () => router.push('/movies?status=hidden') },
       ],
     },
-    { key: 'comments', icon: <CommentOutlined />, label: 'Binh luan', onClick: () => router.push('/comments') },
-    { key: 'analytics', icon: <BarChartOutlined />, label: 'Thong ke', onClick: () => router.push('/analytics') },
-    { key: 'users', icon: <TeamOutlined />, label: 'Nguoi dung', onClick: () => router.push('/users') },
+    { key: 'comments', icon: <CommentOutlined />, label: 'Bình luận', onClick: () => router.push('/comments') },
+    { key: 'analytics', icon: <BarChartOutlined />, label: 'Thống kê', onClick: () => router.push('/analytics') },
+    { key: 'users', icon: <TeamOutlined />, label: 'Người dùng', onClick: () => router.push('/users') },
     { type: 'divider' as const },
-    { key: 'categories', icon: <AppstoreOutlined />, label: 'The loai', onClick: () => router.push('/categories') },
-    { key: 'actors', icon: <UserOutlined />, label: 'Dien vien', onClick: () => router.push('/actors') },
+    { key: 'categories', icon: <AppstoreOutlined />, label: 'Thể loại', onClick: () => router.push('/categories') },
+    { key: 'actors', icon: <UserOutlined />, label: 'Diễn viên', onClick: () => router.push('/actors') },
   ];
 
   const userMenuItems = [
-    { key: 'profile', icon: <UserOutlined />, label: 'Ho so' },
-    { key: 'settings', icon: <SettingOutlined />, label: 'Cai dat' },
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Profile',
+      onClick: () => router.push('/profile'),
+    },
     { type: 'divider' as const },
-    { key: 'logout', icon: <LogoutOutlined />, label: 'Dang xuat', danger: true },
   ];
 
   useEffect(() => {
@@ -154,7 +158,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
     try {
       window.localStorage.setItem(
         READ_NOTIFICATION_STORAGE_KEY,
-        JSON.stringify(readNotificationIds.slice(-300))
+        JSON.stringify(readNotificationIds.slice(-300)),
       );
     } catch {
       // ignore local storage error
@@ -165,6 +169,29 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
     const querySearch = typeof router.query.search === 'string' ? router.query.search : '';
     setQuickSearch(querySearch);
   }, [router.query.search]);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchAdminProfile = async () => {
+      try {
+        const response = await api.get('/api/profile');
+        if (active && response.data) {
+          setAdmin(response.data);
+        }
+      } catch {
+        if (active) {
+          setAdmin(null);
+        }
+      }
+    };
+
+    void fetchAdminProfile();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleQuickSearch = useCallback((value: string) => {
     const keyword = value.trim();
@@ -178,10 +205,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
   }, [router]);
 
   const fetchNotifications = useCallback(async () => {
-      setNotificationLoading(true);
-      try {
-        const [pendingCommentsRes, draftMoviesRes, hiddenMoviesRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/api/comments/admin`, { params: { page: 1, limit: 6, status: 'pending' } }),
+    setNotificationLoading(true);
+    try {
+      const [pendingCommentsRes, draftMoviesRes, hiddenMoviesRes] = await Promise.allSettled([
+        api.get('/api/comments/admin', { params: { page: 1, limit: 6, status: 'pending' } }),
         movieApi.getAll({ page: 1, limit: 1, status: 'draft' }),
         movieApi.getAll({ page: 1, limit: 1, status: 'hidden' }),
       ]);
@@ -255,7 +282,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
+    void fetchNotifications();
     const timer = setInterval(fetchNotifications, 60_000);
     return () => clearInterval(timer);
   }, [fetchNotifications]);
@@ -275,7 +302,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
   const handleNotificationClick = useCallback((notification: AdminNotification) => {
     markNotificationAsRead(notification.id);
     setNotificationOpen(false);
-    if (notification.href) router.push(notification.href);
+    if (notification.href) {
+      router.push(notification.href);
+    }
   }, [markNotificationAsRead, router]);
 
   const notificationContent = useMemo(() => (
@@ -344,7 +373,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      {/* Fixed Left Sidebar */}
       <Sider
         collapsible
         collapsed={collapsed}
@@ -366,7 +394,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
             {collapsed ? 'N' : 'NEXTFLIX'}
           </Title>
           {!collapsed && (
-            <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>Admin Panel</div>
+            <div style={{ color: '#888', fontSize: 12, marginTop: 4 }}>Trang quản trị</div>
           )}
         </div>
         <Menu
@@ -379,9 +407,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
         />
       </Sider>
 
-      {/* Main Layout with fixed sidebar */}
       <Layout style={{ marginLeft: collapsed ? 80 : 260, transition: 'margin-left 0.2s' }}>
-        {/* Top Bar */}
         <Header
           style={{
             background: '#fff',
@@ -396,7 +422,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
             boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
           }}
         >
-          {/* Left: Toggle button + Search */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <span
               onClick={() => setCollapsed(!collapsed)}
@@ -405,7 +430,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
               {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             </span>
             <Search
-              placeholder="Tim kiem nhanh..."
+              placeholder="Quick search..."
               style={{ width: 280 }}
               allowClear
               value={quickSearch}
@@ -414,7 +439,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
             />
           </div>
 
-          {/* Right: Notifications + User */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <Popover
               trigger="click"
@@ -422,7 +446,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
               open={notificationOpen}
               onOpenChange={(open) => {
                 setNotificationOpen(open);
-                if (open) fetchNotifications();
+                if (open) {
+                  void fetchNotifications();
+                }
               }}
               content={notificationContent}
             >
@@ -438,16 +464,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, breadcrumb }) => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <Avatar
-                  style={{ backgroundColor: '#e50914' }}
+                  size={32}
+                  src={admin?.image || undefined}
                   icon={<UserOutlined />}
+                  style={{ backgroundColor: '#1890ff' }}
                 />
-                <span style={{ fontWeight: 500 }}>Admin</span>
+                <span style={{ fontWeight: 500 }}>
+                  {admin?.name || admin?.email?.split('@')[0] || 'Admin'}
+                </span>
               </div>
             </Dropdown>
           </div>
         </Header>
 
-        {/* Breadcrumb + Content */}
         <Content
           style={{
             margin: 24,

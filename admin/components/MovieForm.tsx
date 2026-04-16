@@ -363,14 +363,6 @@ const MovieForm: React.FC<MovieFormProps> = ({ initialValues, onSubmit, loading 
                   maxLength={DESC_MAX}
                 />
               </Form.Item>
-              <Form.Item
-                name="cast"
-                label="Diễn viên"
-                rules={[{ validator: (_, v) => v?.length > MAX_CAST ? Promise.reject(`Tối đa ${MAX_CAST} diễn viên`) : Promise.resolve() }]}
-                extra={<Text type="secondary">Nhập tên rồi nhấn Enter, tối đa {MAX_CAST} người</Text>}
-              >
-                <Select mode="tags" placeholder="Nhập tên diễn viên rồi Enter" maxTagCount={5} maxTagTextLength={30} />
-              </Form.Item>
             </Card>
 
             <Card title="Media" style={{ marginBottom: 24 }}>
@@ -421,10 +413,36 @@ const MovieForm: React.FC<MovieFormProps> = ({ initialValues, onSubmit, loading 
                 name="categories"
                 label="Thể loại"
                 rules={[{ required: currentStatus === 'published', message: 'Xuất bản cần ít nhất 1 thể loại', type: 'array' }]}
-                extra={<Text type="secondary">Có thể chọn từ danh sách hoặc tự nhập thể loại mới</Text>}
+                extra={
+                  <Space direction="vertical" size={4} style={{ marginTop: 4 }}>
+                    <Text type="secondary">Luồng logic: Chọn hoặc gõ thể loại. Nhấn Enter để thêm custom thể loại:</Text>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {CATEGORIES.slice(0, 5).map((c) => (
+                        <AntTag key={c} color="blue-inverse">{c}</AntTag>
+                      ))}
+                      <span style={{ fontSize: '12px', color: '#999' }}>+{CATEGORIES.length - 5} thêm...</span>
+                    </div>
+                  </Space>
+                }
               >
-                <Select mode="tags" placeholder="Chọn hoặc nhập thể loại" maxTagCount={3} listHeight={220} showSearch optionFilterProp="children" tokenSeparators={[',']}>
-                  {CATEGORIES.map((c) => <Select.Option key={c} value={c}>{c}</Select.Option>)}
+                <Select
+                  mode="multiple"
+                  placeholder="Chọn hoặc nhập thể loại phim"
+                  maxTagCount={5}
+                  listHeight={220}
+                  showSearch
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    String(option?.value || '').toLowerCase().includes(input.toLowerCase()) ||
+                    String(option?.children || '').toLowerCase().includes(input.toLowerCase())
+                  }
+                  notFoundContent={<Text type="secondary">Không tìm thấy - Nhấn Enter để thêm custom</Text>}
+                >
+                  {CATEGORIES.map((c) => (
+                    <Select.Option key={c} value={c}>
+                      <AntTag color="blue">{c}</AntTag>
+                    </Select.Option>
+                  ))}
                 </Select>
               </Form.Item>
               <Form.Item

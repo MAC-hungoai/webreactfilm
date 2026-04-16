@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Head from "next/head";
 import type { NextPage, GetServerSidePropsContext } from "next";
 import { useRouter } from "next/router";
@@ -11,6 +11,7 @@ import { useAppDispatch } from "../store";
 import useCurrentUser from "../hooks/useCurrentUser";
 import useMovieList, { type MovieItem } from "../hooks/useMovieList";
 import useFavorites from "../hooks/useFavorites";
+import { getBrandIntroUrl } from "../libs/brandIntro";
 
 import Navbar from "../components/Navbar";
 import Billboard from "../components/Billboard";
@@ -18,8 +19,7 @@ import MovieList from "../components/MovieList";
 import InfoModal from "../components/InfoModal";
 import IntroN from "../components/IntroN";
 
-const BRAND_INTRO_URL =
-  process.env.NEXT_PUBLIC_BRAND_INTRO_URL || "https://youtu.be/GV3HUDMQ-F8?si=gQQSweVWrmLqX2Vd";
+const BRAND_INTRO_URL = getBrandIntroUrl();
 const parsedBrandIntroDurationMs = Number(
   process.env.NEXT_PUBLIC_BRAND_INTRO_DURATION_MS ?? process.env.NEXT_PUBLIC_INTRO_DURATION_MS
 );
@@ -41,6 +41,8 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   const introParam = context.query.intro;
   const showIntroOnLoad = introParam === "1" || (Array.isArray(introParam) && introParam.includes("1"));
 
+  // Don't redirect - showIntroOnLoad will be false if coming directly to home
+  // Home page will handle it gracefully
   return { props: { showIntroOnLoad } };
 }
 
@@ -49,7 +51,40 @@ const Home: NextPage<HomePageProps> = ({ showIntroOnLoad }) => {
   const dispatch = useAppDispatch();
   const [showIntro, setShowIntro] = useState(showIntroOnLoad);
   const [introResolved, setIntroResolved] = useState(showIntroOnLoad);
-  const shouldFetchHomeData = introResolved && !showIntro;
+  const prevShowIntroOnLoadRef = useRef(showIntroOnLoad);
+  // Always fetch data after intro resolves, even if showing intro
+  // This way movies load in background while intro plays
+  const shouldFetchHomeData = introResolved;
+
+  // Calculate introIsMuted immediately (not using useEffect to avoid timing issue)
+  const introIsMuted = useMemo(() => {
+    if (!showIntro) return false;
+    
+    try {
+      // Detect if user just selected avatar (showIntroOnLoad changed from false → true)
+      const isAvatarJustSelected = !prevShowIntroOnLoadRef.current && showIntroOnLoad;
+      
+      if (isAvatarJustSelected) {
+        // First time from avatar selection: reset counter and show with sound
+        window.sessionStorage.setItem("nextflix:home_intro_run_count", "0");
+        return false; // No mute (has sound)
+      }
+    } catch {
+      // Ignore sessionStorage errors
+    }
+    
+    // For subsequent visits/reload, check run count
+    try {
+      const storageKey = "nextflix:home_intro_run_count";
+      const runCountStr = window.sessionStorage.getItem(storageKey);
+      const runCount = runCountStr ? parseInt(runCountStr, 10) : 0;
+      // First run (count = 0): no mute, subsequent runs: muted
+      return runCount > 0;
+    } catch {
+      // If sessionStorage fails, assume first run
+      return false;
+    }
+  }, [showIntro, showIntroOnLoad]);
 
   const { data: currentUser } = useCurrentUser(shouldFetchHomeData);
   const { data: moviesList = [], isLoading: moviesLoading, error: moviesError } = useMovieList(shouldFetchHomeData);
@@ -110,41 +145,33 @@ const Home: NextPage<HomePageProps> = ({ showIntroOnLoad }) => {
   const hideIntro = useCallback(() => {
     try {
       if (typeof window !== "undefined") {
-        window.sessionStorage.setItem("nextflix:home_intro_seen", "1");
+        // Increment intro run count for reload tracking
+        const storageKey = "nextflix:home_intro_run_count";
+        const runCountStr = window.sessionStorage.getItem(storageKey);
+        const runCount = runCountStr ? parseInt(runCountStr, 10) : 0;
+        window.sessionStorage.setItem(storageKey, String(runCount + 1));
       }
     } catch {
       // Ignore sessionStorage errors.
     }
 
     setShowIntro(false);
-    if (showIntroOnLoad) {
-      router.replace("/", undefined, { shallow: true });
-    }
-  }, [router, showIntroOnLoad]);
+    // Keep ?intro=1 in URL so reload will show intro again but muted
+    // Don't remove the intro param
+  }, []);
 
   useIsomorphicLayoutEffect(() => {
-    let shouldShowIntro = showIntroOnLoad;
-    if (typeof window !== "undefined") {
-      try {
-        const navEntries = window.performance.getEntriesByType("navigation");
-        const navEntry = navEntries[0] as PerformanceNavigationTiming | undefined;
-        const navType = navEntry?.type;
-        const isReload = navType === "reload";
-        const isNavigate = navType === "navigate" || !navType;
-        const hasShownIntro = window.sessionStorage.getItem("nextflix:home_intro_seen") === "1";
-        const legacyNavigation = (window.performance as any).navigation;
-        const legacyReload = legacyNavigation?.type === 1;
-
-        if (isReload || legacyReload || (!hasShownIntro && isNavigate)) {
-          shouldShowIntro = true;
-        }
-      } catch {
-        // Ignore unsupported performance APIs.
-      }
-    }
-
+    // Luồng hoạt động:
+    // 1. Server-side đã check intro param, return showIntroOnLoad (true/false)
+    // 2. Client-side: Show intro nếu showIntroOnLoad = true
+    // 3. useMemo sẽ handle reset runCount khi showIntroOnLoad thay đổi
+    
+    const shouldShowIntro = showIntroOnLoad;
     setShowIntro(shouldShowIntro);
     setIntroResolved(true);
+    
+    // Update ref after state changes
+    prevShowIntroOnLoadRef.current = showIntroOnLoad;
   }, [showIntroOnLoad]);
 
   useEffect(() => {
@@ -165,12 +192,14 @@ const Home: NextPage<HomePageProps> = ({ showIntroOnLoad }) => {
         alt="Brand intro"
         onFinished={hideIntro}
         finishAfterMs={INTRO_DURATION_MS}
+        isMuted={introIsMuted}
       />
     );
   }
 
-  if (moviesLoading) {
-    return <IntroN preferVideo videoUrl={BRAND_INTRO_URL} alt="Loading intro" />;
+  // If intro finished but movies still loading, show loading indicator
+  if (moviesLoading && moviesList.length === 0) {
+    return <div className="w-screen h-screen bg-black" />;
   }
 
   if (moviesError) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Input, Tag, Button, Space, Avatar, message } from 'antd';
 import { UserOutlined, SearchOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import AdminLayout from '../components/AdminLayout';
-import axios from 'axios';
+import api from '../lib/api';
 
 interface User {
   id: string;
@@ -26,18 +26,20 @@ const UsersPage: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:3000/api/users?page=${pagination.page}&limit=${pagination.limit}&search=${search}`, {
-        withCredentials: true,
+      const response = await api.get('/api/users', {
+        params: {
+          page: pagination.page,
+          limit: pagination.limit,
+          search,
+        },
       });
       setUsers(response.data.data || []);
       setPagination(prev => ({ ...prev, total: response.data.total || 0 }));
     } catch (error) {
       console.error('Error fetching users:', error);
-      // Demo data
-      setUsers([
-        { id: '1', name: 'Admin User', email: 'admin@test.com', createdAt: new Date().toISOString(), favoriteIds: [] },
-        { id: '2', name: 'Test User', email: 'test@test.com', createdAt: new Date().toISOString(), favoriteIds: [] },
-      ]);
+      setUsers([]);
+      setPagination(prev => ({ ...prev, total: 0 }));
+      message.error('KhĂ´ng thá»ƒ táº£i danh sĂ¡ch ngÆ°á»i dĂ¹ng');
     } finally {
       setLoading(false);
     }

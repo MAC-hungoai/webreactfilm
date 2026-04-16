@@ -3,6 +3,18 @@ import { prisma } from "../../../libs/prismadb";
 
 const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://localhost:5000";
 const EVENTS_COLLECTION = "movie_engagement_events";
+const ALLOWED_ORIGINS = new Set(["http://localhost:3000", "http://localhost:3002"]);
+
+const setCors = (req: NextApiRequest, res: NextApiResponse) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+};
 
 const toNonNegativeInt = (raw: unknown): number | null => {
   if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) return Math.floor(raw);
@@ -79,6 +91,12 @@ const getViewCountByMovieId = async (movieId: string) => {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  setCors(req, res);
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   try {
     if (req.method !== "GET") {
       return res.status(405).json({ error: "Method not allowed" });

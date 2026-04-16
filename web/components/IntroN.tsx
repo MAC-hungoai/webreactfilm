@@ -9,6 +9,7 @@ interface IntroNProps {
   preferVideo?: boolean;
   onFinished?: () => void;
   finishAfterMs?: number;
+  isMuted?: boolean;
 }
 
 type IntroSource =
@@ -34,7 +35,7 @@ const INTRO_YOUTUBE_END_GUARD_SECONDS = Number.isFinite(parsedIntroYoutubeEndGua
   : 0.35;
 const INTRO_LOCKED_UI = INTRO_LOCK_PLAYER_CONTROLS || INTRO_HIDE_YOUTUBE_CHROME;
 
-function applyYoutubeParams(embed: URL) {
+function applyYoutubeParams(embed: URL, isMuted: boolean) {
   embed.searchParams.set("autoplay", "1");
   embed.searchParams.set("rel", "0");
   embed.searchParams.set("playsinline", "1");
@@ -45,10 +46,10 @@ function applyYoutubeParams(embed: URL) {
   embed.searchParams.set("fs", INTRO_LOCKED_UI ? "0" : "1");
   embed.searchParams.set("disablekb", INTRO_LOCKED_UI ? "1" : "0");
   embed.searchParams.set("showinfo", "0");
-  embed.searchParams.set("mute", INTRO_MUTED || INTRO_AUTOPLAY_MUTED ? "1" : "0");
+  embed.searchParams.set("mute", isMuted ? "1" : "0");
 }
 
-function toYoutubeEmbed(raw: string): string {
+function toYoutubeEmbed(raw: string, isMuted: boolean): string {
   try {
     const u = new URL(raw.trim());
 
@@ -57,14 +58,14 @@ function toYoutubeEmbed(raw: string): string {
         const embedId = u.pathname.split("/")[2];
         if (!embedId) return "";
         const embed = new URL(`https://www.youtube-nocookie.com/embed/${embedId}`);
-        applyYoutubeParams(embed);
+        applyYoutubeParams(embed, isMuted);
         return embed.toString();
       }
 
       const id = u.searchParams.get("v");
       if (id) {
         const embed = new URL(`https://www.youtube-nocookie.com/embed/${id}`);
-        applyYoutubeParams(embed);
+        applyYoutubeParams(embed, isMuted);
         return embed.toString();
       }
 
@@ -72,7 +73,7 @@ function toYoutubeEmbed(raw: string): string {
         const shortId = u.pathname.split("/")[2];
         if (shortId) {
           const embed = new URL(`https://www.youtube-nocookie.com/embed/${shortId}`);
-          applyYoutubeParams(embed);
+          applyYoutubeParams(embed, isMuted);
           return embed.toString();
         }
       }
@@ -82,7 +83,7 @@ function toYoutubeEmbed(raw: string): string {
       const id = u.pathname.replace("/", "");
       if (id) {
         const embed = new URL(`https://www.youtube-nocookie.com/embed/${id}`);
-        applyYoutubeParams(embed);
+        applyYoutubeParams(embed, isMuted);
         return embed.toString();
       }
     }
@@ -124,7 +125,7 @@ function isLikelyDirectIntroUrl(raw: string): boolean {
   return true;
 }
 
-function resolveIntroSource(raw?: string): IntroSource {
+function resolveIntroSource(raw?: string, isMuted = false): IntroSource {
   if (!raw) return null;
   const normalized = raw.trim();
   if (!normalized) return null;
@@ -133,7 +134,7 @@ function resolveIntroSource(raw?: string): IntroSource {
     return { type: "direct", src: normalized };
   }
 
-  const embed = toYoutubeEmbed(normalized);
+  const embed = toYoutubeEmbed(normalized, isMuted);
   if (ALLOW_YOUTUBE_INTRO_EMBED && embed) {
     return { type: "youtube", src: embed };
   }
@@ -150,8 +151,10 @@ const IntroN: React.FC<IntroNProps> = ({
   preferVideo = false,
   onFinished,
   finishAfterMs = 0,
+  isMuted,
 }) => {
-  const introSource = useMemo(() => resolveIntroSource(videoUrl), [videoUrl]);
+  const shouldMuteIntro = isMuted ?? (INTRO_MUTED || INTRO_AUTOPLAY_MUTED);
+  const introSource = useMemo(() => resolveIntroSource(videoUrl, shouldMuteIntro), [videoUrl, shouldMuteIntro]);
   const showDirectIntro = Boolean(preferVideo && introSource?.type === "direct");
   const showYoutubeIntro = Boolean(preferVideo && introSource?.type === "youtube");
   const showNOnlyIntro = !showDirectIntro && !showYoutubeIntro;
@@ -181,6 +184,14 @@ const IntroN: React.FC<IntroNProps> = ({
     frame.contentWindow.postMessage(JSON.stringify({ event: "command", func, args }), "*");
   }, []);
 
+  const applyYoutubeAudioState = useCallback(() => {
+    if (!showYoutubeIntro) return;
+    sendYoutubeCommand(shouldMuteIntro ? "mute" : "unMute");
+    if (!shouldMuteIntro) {
+      sendYoutubeCommand("setVolume", [100]);
+    }
+  }, [sendYoutubeCommand, shouldMuteIntro, showYoutubeIntro]);
+
   const initializeYoutubeBridge = useCallback(() => {
     if (!showYoutubeIntro) return;
     const frame = youtubeFrameRef.current;
@@ -188,12 +199,10 @@ const IntroN: React.FC<IntroNProps> = ({
     frame.contentWindow.postMessage(JSON.stringify({ event: "listening", id: "intro-player" }), "*");
     sendYoutubeCommand("addEventListener", ["onStateChange"]);
     sendYoutubeCommand("addEventListener", ["onReady"]);
-    if (INTRO_MUTED || INTRO_AUTOPLAY_MUTED) {
-      sendYoutubeCommand("mute");
-    }
+    applyYoutubeAudioState();
     sendYoutubeCommand("playVideo");
     sendYoutubeCommand("getPlayerState");
-  }, [sendYoutubeCommand, showYoutubeIntro]);
+  }, [applyYoutubeAudioState, sendYoutubeCommand, showYoutubeIntro]);
 
   useEffect(() => {
     if (!showYoutubeIntro || !onFinished) return;
@@ -213,9 +222,7 @@ const IntroN: React.FC<IntroNProps> = ({
       if (!payload) return;
 
       if (payload.event === "onReady") {
-        if (INTRO_MUTED || INTRO_AUTOPLAY_MUTED) {
-          sendYoutubeCommand("mute");
-        }
+        applyYoutubeAudioState();
         sendYoutubeCommand("playVideo");
         return;
       }
@@ -252,7 +259,7 @@ const IntroN: React.FC<IntroNProps> = ({
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [finishIntro, onFinished, sendYoutubeCommand, showYoutubeIntro]);
+  }, [applyYoutubeAudioState, finishIntro, onFinished, sendYoutubeCommand, showYoutubeIntro]);
 
   useEffect(() => {
     if (!onFinished) return;
@@ -276,7 +283,7 @@ const IntroN: React.FC<IntroNProps> = ({
     let cancelled = false;
     let hasStarted = false;
     const tryAutoplay = async () => {
-      player.muted = INTRO_MUTED || INTRO_AUTOPLAY_MUTED;
+      player.muted = shouldMuteIntro;
       try {
         await player.play();
       } catch {
@@ -315,7 +322,7 @@ const IntroN: React.FC<IntroNProps> = ({
       player.removeEventListener("canplay", handleCanPlay);
       player.removeEventListener("loadeddata", handleCanPlay);
     };
-  }, [showDirectIntro, directIntroSrc]);
+  }, [showDirectIntro, directIntroSrc, shouldMuteIntro]);
 
   return (
     <div className={`relative h-screen w-screen bg-black ${className}`.trim()}>
@@ -326,7 +333,7 @@ const IntroN: React.FC<IntroNProps> = ({
             className="h-full w-full object-cover"
             autoPlay
             preload="auto"
-            muted={INTRO_MUTED || INTRO_AUTOPLAY_MUTED}
+            muted={shouldMuteIntro}
             loop={!onFinished}
             playsInline
             controls={!INTRO_HIDE_DIRECT_CONTROLS && !INTRO_LOCK_PLAYER_CONTROLS}

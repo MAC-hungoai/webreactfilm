@@ -5,10 +5,12 @@
   "scripts": {
     "predev": "prisma generate",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "tsc",
-    "prestart": "prisma generate",
+    "build": "prisma generate && tsc && npm run seed:ci",
+    "build:vercel": "prisma generate && next build",
+    "prestart": "prisma generate && (prisma db push --skip-generate && npm run seed || echo \"[prestart] Prisma db push/seed skipped; continuing startup\")",
     "start": "node dist/index.js",
     "seed": "ts-node src/seed.ts",
+    "seed:ci": "node dist/seed.js || echo 'Seed completed or skipped'",
     "seed:reset": "ts-node src/seed.ts --truncate",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push"
@@ -16,6 +18,7 @@
   "dependencies": {
     "@prisma/client": "^4.16.2",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.1",
     "express": "^4.18.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0"

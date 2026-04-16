@@ -40,25 +40,27 @@ export default function MoviesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
 
-  // Sync with URL query params
+  // Sync with URL query params on router ready
   useEffect(() => {
+    if (!router.isReady) return;
+    
     if (router.query.status) {
       setStatusFilter(router.query.status as string);
-      return;
+    } else {
+      setStatusFilter('all');
     }
-    setStatusFilter('all');
-  }, [router.query.status]);
-
-  useEffect(() => {
-    const querySearch = typeof router.query.search === 'string' ? router.query.search : '';
-    setSearch(querySearch);
-  }, [router.query.search]);
+    
+    if (router.query.search) {
+      setSearch(router.query.search as string);
+    }
+  }, [router.isReady, router.query]);
 
   const fetchMovies = useCallback(async (page = 1) => {
     setLoading(true);
     try {
       const params: Record<string, any> = { page, limit: pagination.limit };
       if (search.trim()) params.search = search.trim();
+      // Always send status param - 'all' tells backend to show all statuses
       if (statusFilter) params.status = statusFilter;
       if (categoryFilter) params.category = categoryFilter;
 
@@ -70,17 +72,30 @@ export default function MoviesPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, categoryFilter, pagination.limit]);
+  }, [statusFilter, categoryFilter, pagination.limit, search]);
 
   useEffect(() => {
-    fetchMovies();
+    fetchMovies(1);
   }, [fetchMovies]);
 
-  const handleStatusChange = async (id: string, status: string) => {
+  const handleStatusFilterChange = (s: string) => {
+    setStatusFilter(s || 'all');
+  };
+
+  const handleCategoryFilterChange = (c: string | undefined) => {
+    setCategoryFilter(c);
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await movieApi.updateStatus(id, status);
+      await movieApi.updateStatus(id, newStatus);
       message.success('Cập nhật trạng thái thành công');
-      fetchMovies(pagination.page);
+      // If switching to a different status, switch to "all" tab to see the change
+      if (statusFilter !== 'all' && newStatus !== statusFilter) {
+        setStatusFilter('all');
+      } else {
+        fetchMovies(1);
+      }
     } catch {
       message.error('Lỗi cập nhật trạng thái');
     }
@@ -89,10 +104,20 @@ export default function MoviesPage() {
   const handleDelete = async (id: string) => {
     try {
       await movieApi.delete(id);
-      message.success('Đã ẩn phim');
+      message.success('Phim đã ẩn. Vào tab "Ẩn" để khôi phục.');
       fetchMovies(pagination.page);
     } catch {
-      message.error('Lỗi xóa phim');
+      message.error('Lỗi ẩn phim');
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await movieApi.updateStatus(id, 'published');
+      message.success('Phim đã khôi phục');
+      fetchMovies(pagination.page);
+    } catch {
+      message.error('Lỗi khôi phục phim');
     }
   };
 
@@ -104,9 +129,10 @@ export default function MoviesPage() {
     ...(record.status !== 'draft'
       ? [{ key: 'draft', icon: <FileTextOutlined />, label: 'Chuyển nháp', onClick: () => handleStatusChange(record.id, 'draft') }]
       : []),
-    ...(record.status !== 'hidden'
-      ? [{ key: 'hide', icon: <EyeInvisibleOutlined />, label: 'Ẩn', onClick: () => handleStatusChange(record.id, 'hidden') }]
-      : []),
+    ...(record.status === 'hidden'
+      ? [{ key: 'restore', icon: <EyeOutlined />, label: 'Khôi phục', onClick: () => handleRestore(record.id) }]
+      : [{ key: 'hide', icon: <EyeInvisibleOutlined />, label: 'Ẩn', onClick: () => handleStatusChange(record.id, 'hidden') }]
+    ),
     { type: 'divider' as const },
     { key: 'delete', icon: <DeleteOutlined />, label: 'Xóa', danger: true, onClick: () => handleDelete(record.id) },
   ];
@@ -176,7 +202,7 @@ export default function MoviesPage() {
     <Breadcrumb items={[
       { title: 'Trang chủ' },
       { title: 'Quản lý phim' },
-      { title: statusFilter ? STATUS_MAP[statusFilter]?.label || 'Tất cả' : 'Tất cả phim' },
+      { title: STATUS_MAP[statusFilter]?.label || 'Phim' },
     ]} />
   );
 
@@ -192,19 +218,6 @@ export default function MoviesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onPressEnter={() => {
-                const keyword = search.trim();
-                router.replace(
-                  {
-                    pathname: '/movies',
-                    query: {
-                      status: statusFilter || 'all',
-                      ...(categoryFilter ? { category: categoryFilter } : {}),
-                      ...(keyword ? { search: keyword } : {}),
-                    },
-                  },
-                  undefined,
-                  { shallow: true }
-                );
                 fetchMovies(1);
               }}
               style={{ width: 250 }}
@@ -213,7 +226,7 @@ export default function MoviesPage() {
             <Select
               placeholder="Trạng thái"
               value={statusFilter}
-              onChange={(s) => setStatusFilter(s || 'all')}
+              onChange={handleStatusFilterChange}
               allowClear={false}
               style={{ width: 140 }}
             >
@@ -225,7 +238,7 @@ export default function MoviesPage() {
             <Select
               placeholder="Thể loại"
               value={categoryFilter}
-              onChange={(c) => setCategoryFilter(c)}
+              onChange={handleCategoryFilterChange}
               allowClear
               style={{ width: 180 }}
             >

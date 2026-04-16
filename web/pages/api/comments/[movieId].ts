@@ -101,16 +101,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       orderBy = { createdAt: 'asc' };
     }
 
-    // Keep all non-rejected comments visible on web (approved + pending).
-    // Note: Prisma StringFilter does not support `isSet`.
-    const nonRejectedStatusWhere = { status: { not: 'rejected' } };
+    // Only show approved comments on web (pending comments hidden until admin approves).
+    const approvedStatusWhere = { status: 'approved' };
     const whereTopLevel = {
       movieId: String(movieId),
       OR: [
         { parentId: null },
         { parentId: { isSet: false } },
       ],
-      AND: [nonRejectedStatusWhere],
+      AND: [approvedStatusWhere],
     };
 
     const [comments, total] = await Promise.all([
@@ -128,7 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const replies = await db.comment.findMany({
           where: {
             parentId: comment.id,
-            AND: [nonRejectedStatusWhere],
+            AND: [approvedStatusWhere],
           },
           orderBy: { createdAt: 'asc' },
         });

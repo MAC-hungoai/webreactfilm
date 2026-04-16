@@ -1,5 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "../../libs/prismadb";
+import {
+  areFavoriteIdsEqual,
+  resolveCanonicalFavoriteIds,
+  syncCanonicalFavoriteIds,
+} from "../../libs/canonicalFavorites";
 import serverAuth from "../../libs/serverAuth";
 
 const isObjectId = (value: unknown): value is string =>
@@ -30,12 +35,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ message: "Movie not found" });
     }
 
-    const favoriteIds = Array.isArray(currentUser.favoriteIds)
-      ? currentUser.favoriteIds
-      : [];
-
-    const hasMovie = favoriteIds.includes(movieId);
-    const nextFavoriteIds = hasMovie ? favoriteIds : [...favoriteIds, movieId];
+    const { favoriteIds } = await syncCanonicalFavoriteIds({
+      email: currentUser.email,
+      favoriteIds: currentUser.favoriteIds ?? [],
+    });
+    const { favoriteIds: nextFavoriteIds } = await resolveCanonicalFavoriteIds([
+      ...favoriteIds,
+      movieId,
+    ]);
+    const hasMovie = areFavoriteIdsEqual(favoriteIds, nextFavoriteIds);
 
     const user = await prisma.user.update({
       where: { email: currentUser.email ?? "" },

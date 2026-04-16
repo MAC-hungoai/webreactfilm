@@ -1,6 +1,7 @@
 import React from 'react';
 import { BsFillPlayFill } from 'react-icons/bs';
 import { useRouter } from 'next/router';
+import { navigateToWatch } from '../libs/watchNavigation';
 
 interface PlayButtonProps {
   movieId: string ;
@@ -11,7 +12,9 @@ const PlayButton: React.FC<PlayButtonProps> = ({ movieId }) => {
 
   return (
     <button
-      onClick={() => router.push(`/watch/${movieId}`)}
+      onClick={() => {
+        void navigateToWatch(router, movieId);
+      }}
       className="
         group
         bg-white
