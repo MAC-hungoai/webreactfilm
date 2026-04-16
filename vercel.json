@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "monorepo": true,
+  "projects": [
+    {
+      "name": "web",
+      "path": "web",
+      "rootDirectory": "web"
+    },
+    {
+      "name": "backend",
+      "path": "backend",
+      "rootDirectory": "backend"
+    },
+    {
+      "name": "admin",
+      "path": "admin",
+      "rootDirectory": "admin"
+    }
+  ]
+}
