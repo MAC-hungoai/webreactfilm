@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     const { favoriteIds: canonicalMovieIdsToRemove } = await resolveCanonicalFavoriteIds([movieId]);
     const movieIdsToRemove = new Set<string>([movieId, ...canonicalMovieIdsToRemove]);
-    const updatedFavoriteIds = favoriteIds.filter((favoriteId) => !movieIdsToRemove.has(favoriteId));
+    const updatedFavoriteIds = favoriteIds.filter((favoriteId: string) => !movieIdsToRemove.has(favoriteId));
 
     const updatedUser = await prisma.user.update({
       where: { email: currentUser.email ?? "" },
