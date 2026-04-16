@@ -11,7 +11,7 @@ const getPrisma = () => {
 };
 
 const toStringArray = (value: unknown): string[] => (
-  Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : []
+  Array.isArray(value) ? value.map((item: any) => String(item)).filter(Boolean) : []
 );
 
 const toNonNegativeInt = (value: unknown): number => {

@@ -21,11 +21,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         favoriteIds: currentUser.favoriteIds ?? [],
       });
       const movies = await prisma.movie.findMany({ where: { id: { in: favoriteIds } } });
-      const movieById = new Map(movies.map((movie) => [movie.id, movie]));
+      const movieById = new Map(movies.map((movie: any) => [movie.id, movie]));
 
       return res.status(200).json(
         favoriteIds
-          .map((favoriteId) => movieById.get(favoriteId))
+          .map((favoriteId: string) => movieById.get(favoriteId))
           .filter((movie): movie is (typeof movies)[number] => Boolean(movie))
       );
     }

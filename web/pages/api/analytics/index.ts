@@ -272,7 +272,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       current.comments += 1;
     }
 
-    const timeline = buckets.map((bucket) => ({
+    const timeline = buckets.map((bucket: any) => ({
       key: bucket.key,
       label: bucket.label,
       views: timelineMap.get(bucket.key)?.views || 0,
@@ -374,10 +374,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         select: { id: true, title: true },
       })
       : [];
-    const titleById = new Map(movies.map((movie) => [movie.id, movie.title]));
+    const titleById = new Map(movies.map((movie: any) => [movie.id, movie.title]));
 
     const hotMovies = Array.from(byMovie.entries())
-      .map(([movieId, metric]) => ({
+      .map(([movieId, metric]: any) => ({
         movieId,
         title: titleById.get(movieId) || 'Unknown movie',
         views: metric.views,

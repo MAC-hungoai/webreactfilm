@@ -17,7 +17,7 @@ const buildQueryString = (query: NextApiRequest["query"]) => {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      value.forEach((v) => params.append(key, String(v)));
+      value.forEach((v: any) => params.append(key, String(v)));
       return;
     }
     if (value !== undefined && value !== null) {
@@ -60,7 +60,7 @@ const fetchFromLocalDb = async (req: NextApiRequest) => {
   ]);
 
   return {
-    data: users.map((user) => ({
+    data: users.map((user: any) => ({
       ...user,
       favoriteIds: Array.isArray(user.favoriteIds) ? user.favoriteIds : [],
     })),

@@ -59,7 +59,7 @@ const readAggregate = async (pipeline: Record<string, unknown>[]) => {
 const getViewCountByMovieIds = async (movieIds: string[]) => {
   const uniqueMovieIds = Array.from(new Set(
     movieIds
-      .map((id) => String(id || "").trim())
+      .map((id: string) => String(id || "").trim())
       .filter(Boolean),
   ));
   if (!uniqueMovieIds.length) return new Map<string, number>();
@@ -96,12 +96,12 @@ const attachRealViewCounts = async (payload: unknown) => {
 
   const movies = current.data as Record<string, any>[];
   const viewCountByMovieId = await getViewCountByMovieIds(
-    movies.map((movie) => String(movie?.id ?? "")),
+    movies.map((movie: any) => String(movie?.id ?? "")),
   );
 
   return {
     ...current,
-    data: movies.map((movie) => withCompatFields(movie, viewCountByMovieId.get(String(movie?.id ?? "")))),
+    data: movies.map((movie: any) => withCompatFields(movie, viewCountByMovieId.get(String(movie?.id ?? "")))),
   };
 };
 
@@ -109,7 +109,7 @@ const buildQueryString = (query: NextApiRequest["query"]) => {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      value.forEach((v) => params.append(key, v));
+      value.forEach((v: any) => params.append(key, v));
       return;
     }
     if (value !== undefined && value !== null) {
@@ -166,10 +166,10 @@ const fetchFromLocalDb = async (req: NextApiRequest) => {
     }),
     prisma.movie.count({ where }),
   ]);
-  const viewCountByMovieId = await getViewCountByMovieIds(movies.map((movie) => movie.id));
+  const viewCountByMovieId = await getViewCountByMovieIds(movies.map((movie: any) => movie.id));
 
   return {
-    data: movies.map((movie) => withCompatFields(movie, viewCountByMovieId.get(movie.id))),
+    data: movies.map((movie: any) => withCompatFields(movie, viewCountByMovieId.get(movie.id))),
     pagination: {
       total,
       page,
