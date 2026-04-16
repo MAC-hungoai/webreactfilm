@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// Force rebuild - ignore TypeScript build errors in production
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: false, // Disable SWC minify to avoid Railway memory issues
