@@ -5,7 +5,6 @@ const nextConfig = {
   swcMinify: false, // Disable SWC minify to avoid Railway memory issues
   typescript: {
     ignoreBuildErrors: true, // Ignore TypeScript build errors to allow deployment
-    tsconfigPath: false,
   },
   eslint: {
     ignoreDuringBuilds: true,
