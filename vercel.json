@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "monorepo": true,
   "crons": [],
   "projects": [
     {
