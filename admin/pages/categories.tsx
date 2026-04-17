@@ -1,6 +1,7 @@
 import React from 'react';
 import { Breadcrumb, Card, Typography, Tag, Space, Table, Button } from 'antd';
 import { PlusOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { GetServerSideProps } from 'next';
 import AdminLayout from '../components/AdminLayout';
 
 const { Title, Text } = Typography;
@@ -47,3 +48,9 @@ export default function CategoriesPage() {
     </AdminLayout>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    props: {},
+  };
+};

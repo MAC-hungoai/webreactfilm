@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Form, Input, Button, Avatar, Row, Col, message, Divider } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
+import { GetServerSideProps } from 'next';
 import AdminLayout from '../components/AdminLayout';
 import api from '../lib/api';
 
@@ -156,6 +157,12 @@ const ProfilePage: React.FC = () => {
       </div>
     </AdminLayout>
   );
+};
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    props: {},
+  };
 };
 
 export default ProfilePage;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Input, Tag, Button, Space, Avatar, message } from 'antd';
 import { UserOutlined, SearchOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { GetServerSideProps } from 'next';
 import AdminLayout from '../components/AdminLayout';
 import api from '../lib/api';
 
@@ -128,5 +129,9 @@ const UsersPage: React.FC = () => {
     </AdminLayout>
   );
 };
-
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    props: {},
+  };
+};
 export default UsersPage;

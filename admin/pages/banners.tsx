@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, Empty, Typography, Breadcrumb } from "antd";
 import { PictureOutlined } from "@ant-design/icons";
+import { GetServerSideProps } from "next";
 import AdminLayout from "../components/AdminLayout"; // sửa path nếu khác
 
 const { Title, Text } = Typography;
@@ -60,3 +61,9 @@ export default function BannersPage() {
     </AdminLayout>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    props: {},
+  };
+};

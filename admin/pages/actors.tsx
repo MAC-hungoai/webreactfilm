@@ -2,6 +2,7 @@ import React from 'react';
 import { Breadcrumb, Card, Typography, Table, Tag } from 'antd';
 import { TeamOutlined } from '@ant-design/icons';
 import AdminLayout from '../components/AdminLayout';
+import { GetServerSideProps } from 'next';
 
 const { Title, Text } = Typography;
 
@@ -48,5 +49,19 @@ export default function ActorsPage() {
         </Card>
       </div>
     </AdminLayout>
+  );
+}
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    props: {},
+  };
+};
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    props: {},
+  };
+};
   );
 }

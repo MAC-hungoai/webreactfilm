@@ -8,6 +8,7 @@ import {
   ExclamationCircleOutlined,
   FilterOutlined,
 } from '@ant-design/icons';
+import { GetServerSideProps } from 'next';
 import AdminLayout from '../components/AdminLayout';
 import { ClientOnly } from '../hooks/useHydration';
 import api from '../lib/api';
@@ -406,6 +407,12 @@ const CommentsPage: React.FC = () => {
       </div>
     </AdminLayout>
   );
+};
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    props: {},
+  };
 };
 
 export default CommentsPage;

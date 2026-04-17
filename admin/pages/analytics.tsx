@@ -9,6 +9,7 @@ import {
   StarOutlined,
   FireOutlined,
 } from '@ant-design/icons';
+import { GetServerSideProps } from 'next';
 import AdminLayout from '../components/AdminLayout';
 import { ClientOnly } from '../hooks/useHydration';
 import api from '../lib/api';
@@ -416,6 +417,12 @@ const AnalyticsPage: React.FC = () => {
       </div>
     </AdminLayout>
   );
+};
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    props: {},
+  };
 };
 
 export default AnalyticsPage;
