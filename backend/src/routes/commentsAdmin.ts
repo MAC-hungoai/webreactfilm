@@ -34,11 +34,25 @@ router.get('/', async (req: Request, res: Response) => {
         { userEmail: { contains: search, mode: 'insensitive' } },
       ];
     }
+    // Only include comments that have an associated movie
+    where.movieId = { not: undefined };
 
     const [comments, total, allCount, pendingCount, approvedCount, rejectedCount] = await Promise.all([
       prisma.comment.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          content: true,
+          movieId: true,
+          userId: true,
+          userName: true,
+          userEmail: true,
+          userAvatar: true,
+          status: true,
+          likes: true,
+          dislikes: true,
+          createdAt: true,
+          updatedAt: true,
           movie: {
             select: {
               id: true,
